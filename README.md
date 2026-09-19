@@ -86,3 +86,10 @@ plain JS on purpose — no TypeScript runner needed to seed some rows.
 ```bash
 npm run seed:demo -- you@example.com
 ```
+
+If you don't have a way to run Node against your Supabase project (no
+outbound network access from wherever you're working, no local clone), use
+`supabase/seed/demo-seed.sql` instead: edit the email at the top, then paste
+and run the whole file in the Supabase SQL Editor. It does the same thing,
+just as plain SQL — safe to rerun, and it adds a new event each time rather
+than deduplicating.

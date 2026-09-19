@@ -98,9 +98,11 @@ const GUESTS = [
 ];
 
 function fakeTanzanianPhone(index) {
-  // +255 7XX/6XX XXX XXX — the real Tanzanian mobile prefix ranges.
-  // Deterministic per index so re-running the script is reproducible.
-  const prefixes = ["71", "75", "76", "78", "65", "68"];
+  // +255 followed by 9 digits: a real Tanzanian mobile network prefix
+  // (Tigo 754/755/756, Airtel 786/787, Vodacom 715, Halotel 658, Airtel
+  // 683, Halotel 621) plus a 6-digit subscriber number. Deterministic per
+  // index so re-running the script is reproducible.
+  const prefixes = ["754", "786", "715", "658", "683", "621"];
   const prefix = prefixes[index % prefixes.length];
   const rest = String(100000 + ((index * 7919) % 900000)).padStart(6, "0");
   return `+255${prefix}${rest}`;
