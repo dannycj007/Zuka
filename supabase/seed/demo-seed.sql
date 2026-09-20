@@ -33,11 +33,12 @@ begin
     returning id into v_org_id;
   end if;
 
-  select id into v_theme_id from themes where name = 'Classic' limit 1;
+  -- "Garden" is one of the 5 fixed themes seeded by migration
+  -- 0003_public_invite_access.sql — this script doesn't create themes
+  -- itself, it just picks one for the demo event.
+  select id into v_theme_id from themes where name = 'Garden' limit 1;
   if v_theme_id is null then
-    insert into themes (name, config)
-    values ('Classic', '{}'::jsonb)
-    returning id into v_theme_id;
+    raise exception 'No "Garden" theme found. Apply 0003_public_invite_access.sql first.';
   end if;
 
   insert into events (

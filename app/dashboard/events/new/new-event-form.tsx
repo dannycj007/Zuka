@@ -1,9 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import type { EventFormState } from "../../actions";
-import type { Database } from "@/lib/types/database";
-import { toDatetimeLocalValue } from "@/lib/tanzania-time";
+import { createEvent, type EventFormState } from "../actions";
 
 const initialState: EventFormState = {};
 
@@ -16,16 +14,8 @@ const EVENT_TYPES = [
   "other",
 ];
 
-export function EditEventForm({
-  event,
-  themes,
-  action,
-}: {
-  event: Database["public"]["Tables"]["events"]["Row"];
-  themes: { id: string; name: string }[];
-  action: (state: EventFormState, formData: FormData) => Promise<EventFormState>;
-}) {
-  const [state, formAction, pending] = useActionState(action, initialState);
+export function NewEventForm({ themes }: { themes: { id: string; name: string }[] }) {
+  const [state, formAction, pending] = useActionState(createEvent, initialState);
 
   return (
     <form action={formAction} className="mt-6 space-y-4">
@@ -38,7 +28,7 @@ export function EditEventForm({
           name="name"
           type="text"
           required
-          defaultValue={event.name}
+          placeholder="e.g. Amina & Baraka's Wedding"
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
         />
       </div>
@@ -51,12 +41,12 @@ export function EditEventForm({
           id="event_type"
           name="event_type"
           required
-          defaultValue={event.event_type}
+          defaultValue=""
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
         >
-          {!EVENT_TYPES.includes(event.event_type) && (
-            <option value={event.event_type}>{event.event_type}</option>
-          )}
+          <option value="" disabled>
+            Choose one
+          </option>
           {EVENT_TYPES.map((type) => (
             <option key={type} value={type}>
               {type}
@@ -74,7 +64,6 @@ export function EditEventForm({
           name="starts_at"
           type="datetime-local"
           required
-          defaultValue={toDatetimeLocalValue(event.starts_at)}
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
         />
       </div>
@@ -87,7 +76,6 @@ export function EditEventForm({
           id="venue_name"
           name="venue_name"
           type="text"
-          defaultValue={event.venue_name ?? ""}
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
         />
       </div>
@@ -100,7 +88,6 @@ export function EditEventForm({
           id="venue_address"
           name="venue_address"
           type="text"
-          defaultValue={event.venue_address ?? ""}
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
         />
       </div>
@@ -112,7 +99,7 @@ export function EditEventForm({
         <select
           id="language"
           name="language"
-          defaultValue={event.language}
+          defaultValue="en"
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
         >
           <option value="en">English</option>
@@ -128,7 +115,7 @@ export function EditEventForm({
           <select
             id="theme_id"
             name="theme_id"
-            defaultValue={event.theme_id ?? themes[0].id}
+            defaultValue={themes[0].id}
             className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
           >
             {themes.map((theme) => (
@@ -139,22 +126,6 @@ export function EditEventForm({
           </select>
         </div>
       )}
-
-      <div>
-        <label htmlFor="status" className="block text-sm font-medium">
-          Status
-        </label>
-        <select
-          id="status"
-          name="status"
-          defaultValue={event.status}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
-        >
-          <option value="draft">Draft</option>
-          <option value="live">Live</option>
-          <option value="closed">Closed</option>
-        </select>
-      </div>
 
       {state.error && (
         <p className="text-sm text-red-600" role="alert">
@@ -167,7 +138,7 @@ export function EditEventForm({
         disabled={pending}
         className="w-full rounded-md bg-zinc-900 px-4 py-2 text-base font-medium text-white disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Save changes"}
+        {pending ? "Creating…" : "Create event"}
       </button>
     </form>
   );

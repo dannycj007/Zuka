@@ -19,6 +19,7 @@ function readEventFields(formData: FormData) {
     venueName: String(formData.get("venue_name") ?? "").trim(),
     venueAddress: String(formData.get("venue_address") ?? "").trim(),
     language: String(formData.get("language") ?? "en") as EventLanguage,
+    themeId: String(formData.get("theme_id") ?? "").trim() || null,
   };
 }
 
@@ -56,6 +57,7 @@ export async function createEvent(
       venue_name: fields.venueName || null,
       venue_address: fields.venueAddress || null,
       language: fields.language,
+      theme_id: fields.themeId,
     })
     .select("id")
     .single();
@@ -95,6 +97,7 @@ export async function updateEvent(
       venue_name: fields.venueName || null,
       venue_address: fields.venueAddress || null,
       language: fields.language,
+      theme_id: fields.themeId,
       status,
     })
     .eq("id", eventId);

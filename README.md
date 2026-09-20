@@ -5,7 +5,7 @@ market. Full product brief and phase plan live in the project's founding
 conversation; every `>>> DECISION` checkpoint answered so far is recorded in
 [`DECISIONS.md`](./DECISIONS.md) — treat that file as project memory.
 
-**Status:** Phase 1 (Foundation) complete. Phase 2 (Events and guest list) in progress.
+**Status:** Phases 1 (Foundation) and 2 (Events and guest list) complete. Phase 3 (Guest invite page) in progress.
 
 ## Stack
 
@@ -64,6 +64,13 @@ Schema and RLS policies live in `supabase/migrations/`, applied in order:
   tables implementing decision 5.7).
 - `0002_rls.sql` — Row Level Security for every table, scoped to the
   authenticated organiser's own organisation.
+- `0003_public_invite_access.sql` — seeds the 5 fixed themes (decision
+  5.6), and adds `get_invite(token)` / `submit_rsvp(token, status)`, the
+  two `SECURITY DEFINER` functions the public `/i/[token]` guest invite
+  page uses instead of a direct (and much more exposed) anon `SELECT`
+  policy on `guests`. **Apply this before re-running either seed
+  script** — both now look up a real theme by name rather than creating
+  a placeholder.
 
 `lib/types/database.ts` is a **hand-written** TypeScript type matching
 these migrations, used to type the Supabase clients until a real project
@@ -79,9 +86,9 @@ and replace this hand-written version — don't hand-maintain both.
 ## Seed script
 
 `scripts/seed-demo.mjs` creates (or reuses) an organisation for a given
-signed-up user, one placeholder "Classic" theme, one demo wedding event, and
-20 guests with realistic Tanzanian names and `+255` phone numbers. It's
-plain JS on purpose — no TypeScript runner needed to seed some rows.
+signed-up user, one demo wedding event using the "Garden" theme, and 20
+guests with realistic Tanzanian names and `+255` phone numbers. It's plain
+JS on purpose — no TypeScript runner needed to seed some rows.
 
 ```bash
 npm run seed:demo -- you@example.com

@@ -306,6 +306,33 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      get_invite: {
+        Args: { p_token: string };
+        Returns: {
+          guest_id: string;
+          full_name: string;
+          salutation: string | null;
+          category: string | null;
+          table_label: string | null;
+          seats_allotted: number;
+          rsvp_status: RsvpStatus;
+          event_id: string;
+          event_name: string;
+          event_type: string;
+          starts_at: string;
+          venue_name: string | null;
+          venue_address: string | null;
+          venue_lat: number | null;
+          venue_lng: number | null;
+          language: EventLanguage;
+          theme_config: Record<string, unknown> | null;
+        }[];
+      };
+      submit_rsvp: {
+        Args: { p_token: string; p_status: string };
+        Returns: undefined;
+      };
+    };
   };
 };

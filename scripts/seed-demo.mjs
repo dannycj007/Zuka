@@ -131,21 +131,19 @@ async function main() {
     console.log(`Using existing organisation "${org.name}"`);
   }
 
-  let { data: theme } = await supabase
+  // "Garden" is one of the 5 fixed themes seeded by migration
+  // 0003_public_invite_access.sql — this script doesn't create themes
+  // itself, it just picks one for the demo event.
+  const { data: theme } = await supabase
     .from("themes")
     .select("id")
-    .eq("name", "Classic")
+    .eq("name", "Garden")
     .maybeSingle();
 
   if (!theme) {
-    const { data: newTheme, error } = await supabase
-      .from("themes")
-      .insert({ name: "Classic", config: {} })
-      .select("id")
-      .single();
-    if (error) throw error;
-    theme = newTheme;
-    console.log('Created placeholder "Classic" theme');
+    throw new Error(
+      'No "Garden" theme found. Apply supabase/migrations/0003_public_invite_access.sql first.',
+    );
   }
 
   const startsAt = new Date();
