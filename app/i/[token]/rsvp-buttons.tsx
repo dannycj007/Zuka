@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { InviteDictionary } from "@/lib/i18n";
+import type { ClientDictionary } from "@/lib/i18n";
 import type { RsvpStatus } from "@/lib/types/database";
 
 const OPTIONS = ["yes", "maybe", "no"] as const;
@@ -14,7 +14,7 @@ export function RsvpButtons({
 }: {
   token: string;
   initialStatus: RsvpStatus;
-  dict: InviteDictionary;
+  dict: ClientDictionary;
 }) {
   const [status, setStatus] = useState<RsvpStatus>(initialStatus);
   const [pending, startTransition] = useTransition();

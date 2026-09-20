@@ -30,6 +30,48 @@ export type InviteDictionary = {
   notFoundMessage: string;
 };
 
+/**
+ * The subset of InviteDictionary that's safe to pass to a Client
+ * Component. invitedTo/greeting are functions — React's server/client
+ * boundary rejects any prop containing a function that isn't a Server
+ * Action, so those two must never cross it, even wrapped in a larger
+ * object. TypeScript's Pick<> on a prop type does NOT strip properties
+ * at runtime, so this needs an actual object rebuild, not just a type
+ * annotation, at every call site that hands a dictionary to a Client
+ * Component.
+ */
+export type ClientDictionary = Omit<InviteDictionary, "invitedTo" | "greeting">;
+
+export function toClientDictionary(dict: InviteDictionary): ClientDictionary {
+  return {
+    eventDetails: dict.eventDetails,
+    when: dict.when,
+    where: dict.where,
+    getDirections: dict.getDirections,
+    addToCalendar: dict.addToCalendar,
+    googleCalendar: dict.googleCalendar,
+    appleOutlookCalendar: dict.appleOutlookCalendar,
+    table: dict.table,
+    seats: dict.seats,
+    entryPass: dict.entryPass,
+    entryPassHint: dict.entryPassHint,
+    rsvpQuestion: dict.rsvpQuestion,
+    rsvpYes: dict.rsvpYes,
+    rsvpNo: dict.rsvpNo,
+    rsvpMaybe: dict.rsvpMaybe,
+    rsvpRecordedYes: dict.rsvpRecordedYes,
+    rsvpRecordedNo: dict.rsvpRecordedNo,
+    rsvpRecordedMaybe: dict.rsvpRecordedMaybe,
+    countdownUntil: dict.countdownUntil,
+    days: dict.days,
+    hours: dict.hours,
+    minutes: dict.minutes,
+    happeningNow: dict.happeningNow,
+    notFoundTitle: dict.notFoundTitle,
+    notFoundMessage: dict.notFoundMessage,
+  };
+}
+
 // Machine-quality Swahili, not reviewed by a native speaker — worth a
 // pass from someone fluent before real guests see it.
 const en: InviteDictionary = {

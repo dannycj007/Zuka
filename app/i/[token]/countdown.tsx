@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import type { InviteDictionary } from "@/lib/i18n";
+import type { ClientDictionary } from "@/lib/i18n";
 
 function subscribe(callback: () => void) {
   const id = setInterval(callback, 60_000);
@@ -24,7 +24,7 @@ export function Countdown({
   dict,
 }: {
   startsAt: string;
-  dict: Pick<InviteDictionary, "countdownUntil" | "days" | "hours" | "minutes" | "happeningNow">;
+  dict: Pick<ClientDictionary, "countdownUntil" | "days" | "hours" | "minutes" | "happeningNow">;
 }) {
   const now = useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot);
 

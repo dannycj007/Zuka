@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { loadInvite } from "./data";
 import { parseThemeConfig, themeCssVars } from "@/lib/theme";
-import { getDictionary } from "@/lib/i18n";
+import { getDictionary, toClientDictionary } from "@/lib/i18n";
 import { generateQrSvg } from "@/lib/qr";
 import { formatTanzaniaDateTime } from "@/lib/tanzania-time";
 import { getMapsUrl, getGoogleCalendarUrl } from "@/lib/invite-links";
@@ -38,6 +38,7 @@ export default async function InvitePage({
   }
 
   const dict = getDictionary(invite.language);
+  const clientDict = toClientDictionary(dict);
   const theme = parseThemeConfig(invite.themeConfig);
   const siteUrl = await getSiteUrl();
   const qrSvg = await generateQrSvg(`${siteUrl}/i/${token}`);
@@ -57,7 +58,7 @@ export default async function InvitePage({
           </h1>
         </header>
 
-        <Countdown startsAt={invite.startsAt} dict={dict} />
+        <Countdown startsAt={invite.startsAt} dict={clientDict} />
 
         <section className="rounded-xl bg-[var(--zuka-card)] p-5 text-[var(--zuka-card-fg)] shadow-sm">
           <h2 className="text-sm font-semibold uppercase tracking-wide opacity-70">
@@ -112,7 +113,7 @@ export default async function InvitePage({
         </section>
 
         <section className="rounded-xl bg-[var(--zuka-card)] p-5 text-[var(--zuka-card-fg)] shadow-sm">
-          <RsvpButtons token={token} initialStatus={invite.rsvpStatus} dict={dict} />
+          <RsvpButtons token={token} initialStatus={invite.rsvpStatus} dict={clientDict} />
         </section>
 
         <section className="flex flex-col items-center rounded-xl bg-[var(--zuka-card)] p-5 text-center text-[var(--zuka-card-fg)] shadow-sm">
