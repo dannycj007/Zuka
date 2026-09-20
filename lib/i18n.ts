@@ -141,3 +141,20 @@ const DICTIONARIES: Record<Lang, InviteDictionary> = { en, sw };
 export function getDictionary(lang: string): InviteDictionary {
   return DICTIONARIES[lang as Lang] ?? DICTIONARIES.en;
 }
+
+/**
+ * The SMS invite text itself (Phase 4). Kept deliberately short — SMS is
+ * billed per 160-character segment in Tanzania, and per decision 5.2 all
+ * the richness lives on the invite page, not in the message.
+ */
+export function getInviteSmsText(
+  lang: string,
+  fullName: string,
+  eventName: string,
+  inviteUrl: string,
+): string {
+  if (lang === "sw") {
+    return `Habari ${fullName}! Umealikwa kwenye ${eventName}. Tazama mwaliko wako: ${inviteUrl}`;
+  }
+  return `Hi ${fullName}! You're invited to ${eventName}. View your invite: ${inviteUrl}`;
+}
