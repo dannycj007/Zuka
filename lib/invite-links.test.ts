@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { getMapsUrl, getGoogleCalendarUrl, buildIcs } from "./invite-links.ts";
+import { getMapsUrl, getMapEmbedUrl, getGoogleCalendarUrl, buildIcs } from "./invite-links.ts";
 
 test("prefers lat/lng for the maps link when present", () => {
   const url = getMapsUrl({
@@ -32,6 +32,37 @@ test("falls back to the venue name when there's no address either", () => {
 
 test("returns null when there's nothing to link to", () => {
   const url = getMapsUrl({ venueLat: null, venueLng: null, venueAddress: null, venueName: null });
+  assert.equal(url, null);
+});
+
+test("map embed prefers lat/lng and uses the keyless embed format", () => {
+  const url = getMapEmbedUrl({
+    venueLat: -6.8161,
+    venueLng: 39.2925,
+    venueAddress: "Kivukoni Front",
+    venueName: "Ledger Plaza",
+  });
+  assert.equal(url, "https://maps.google.com/maps?q=-6.8161,39.2925&z=15&output=embed");
+});
+
+test("map embed falls back to the address, then venue name", () => {
+  const byAddress = getMapEmbedUrl({
+    venueLat: null,
+    venueLng: null,
+    venueAddress: "Kivukoni Front, Dar es Salaam",
+    venueName: "Ledger Plaza",
+  });
+  assert.equal(
+    byAddress,
+    "https://maps.google.com/maps?q=Kivukoni%20Front%2C%20Dar%20es%20Salaam&z=15&output=embed",
+  );
+
+  const byName = getMapEmbedUrl({ venueLat: null, venueLng: null, venueAddress: null, venueName: "Ledger Plaza" });
+  assert.equal(byName, "https://maps.google.com/maps?q=Ledger%20Plaza&z=15&output=embed");
+});
+
+test("map embed returns null when there's nothing to show", () => {
+  const url = getMapEmbedUrl({ venueLat: null, venueLng: null, venueAddress: null, venueName: null });
   assert.equal(url, null);
 });
 

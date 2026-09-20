@@ -5,7 +5,7 @@ import { parseThemeConfig, themeCssVars } from "@/lib/theme";
 import { getDictionary, toClientDictionary } from "@/lib/i18n";
 import { generateQrSvg } from "@/lib/qr";
 import { formatTanzaniaDateTime } from "@/lib/tanzania-time";
-import { getMapsUrl, getGoogleCalendarUrl } from "@/lib/invite-links";
+import { getMapsUrl, getMapEmbedUrl, getGoogleCalendarUrl } from "@/lib/invite-links";
 import { getSiteUrl } from "@/lib/site-url";
 import { Countdown } from "./countdown";
 import { RsvpButtons } from "./rsvp-buttons";
@@ -43,6 +43,7 @@ export default async function InvitePage({
   const siteUrl = await getSiteUrl();
   const qrSvg = await generateQrSvg(`${siteUrl}/i/${token}`);
   const mapsHref = getMapsUrl(invite);
+  const mapEmbedSrc = getMapEmbedUrl(invite);
   const googleCalHref = getGoogleCalendarUrl(invite);
 
   return (
@@ -85,6 +86,15 @@ export default async function InvitePage({
                   >
                     {dict.getDirections}
                   </a>
+                )}
+                {mapEmbedSrc && (
+                  <iframe
+                    src={mapEmbedSrc}
+                    title={dict.where}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    className="mt-3 h-48 w-full rounded-lg border-0"
+                  />
                 )}
               </div>
             )}

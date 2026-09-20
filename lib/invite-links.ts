@@ -18,6 +18,25 @@ export function getMapsUrl(
   return null;
 }
 
+/** An embeddable Google Maps iframe src for the venue — same fallback
+ * order as getMapsUrl (lat/lng, then address, then venue name). Uses
+ * Google's free keyless embed format (maps.google.com/maps?...&output=embed)
+ * rather than the official Maps Embed API, which needs an API key and a
+ * billed Google Cloud project — not worth asking for just to show a map
+ * on an invite. Returns null when there's nothing to show. */
+export function getMapEmbedUrl(
+  invite: Pick<InviteData, "venueLat" | "venueLng" | "venueAddress" | "venueName">,
+): string | null {
+  if (invite.venueLat != null && invite.venueLng != null) {
+    return `https://maps.google.com/maps?q=${invite.venueLat},${invite.venueLng}&z=15&output=embed`;
+  }
+  const query = invite.venueAddress || invite.venueName;
+  if (query) {
+    return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=15&output=embed`;
+  }
+  return null;
+}
+
 function formatIcsDate(date: Date): string {
   return date.toISOString().replace(/[-:]|\.\d{3}/g, "");
 }
