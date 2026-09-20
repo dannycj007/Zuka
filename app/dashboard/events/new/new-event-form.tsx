@@ -93,6 +93,24 @@ export function NewEventForm({ themes }: { themes: { id: string; name: string }[
       </div>
 
       <div>
+        <label htmlFor="location_link" className="block text-sm font-medium">
+          Google Maps location (optional)
+        </label>
+        <input
+          id="location_link"
+          name="location_link"
+          type="text"
+          placeholder="Paste a Google Maps link, or lat,lng"
+          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
+        />
+        <p className="mt-1 text-xs text-zinc-500">
+          On the venue&apos;s Google Maps page: Share → Copy link, then
+          paste it here. Makes the invite&apos;s map pin precise instead of
+          just the typed address.
+        </p>
+      </div>
+
+      <div>
         <label htmlFor="language" className="block text-sm font-medium">
           Invitation language
         </label>
