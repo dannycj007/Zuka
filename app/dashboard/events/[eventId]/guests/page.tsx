@@ -13,7 +13,9 @@ export default async function GuestsPage({
 
   const { data: guests } = await supabase
     .from("guests")
-    .select("id, full_name, phone_e164, category, table_label, seats_allotted, rsvp_status")
+    .select(
+      "id, full_name, phone_e164, category, table_label, seats_allotted, rsvp_status, invite_token",
+    )
     .eq("event_id", eventId)
     .order("full_name", { ascending: true });
 
@@ -68,6 +70,15 @@ export default async function GuestsPage({
                   <td className="py-2 pr-4">{guest.seats_allotted}</td>
                   <td className="py-2 pr-4 capitalize">{guest.rsvp_status}</td>
                   <td className="py-2 pr-4 whitespace-nowrap">
+                    <a
+                      href={`/i/${guest.invite_token}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-zinc-900 underline"
+                    >
+                      View invite
+                    </a>
+                    <span className="mx-2 text-zinc-300">·</span>
                     <Link
                       href={`/dashboard/events/${eventId}/guests/${guest.id}/edit`}
                       className="text-sm font-medium text-zinc-900 underline"
