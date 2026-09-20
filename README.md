@@ -5,7 +5,7 @@ market. Full product brief and phase plan live in the project's founding
 conversation; every `>>> DECISION` checkpoint answered so far is recorded in
 [`DECISIONS.md`](./DECISIONS.md) — treat that file as project memory.
 
-**Status:** Phase 1 (Foundation) in progress.
+**Status:** Phase 1 (Foundation) complete. Phase 2 (Events and guest list) in progress.
 
 ## Stack
 
