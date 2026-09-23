@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { nextAttemptNumber, recordDeliveryEvent, loadGuestForSend } from "@/lib/delivery/delivery-log";
+import { NextSmsProvider } from "@/lib/delivery/nextsms";
 import { getInviteSmsText } from "@/lib/i18n";
 import { getSiteUrl } from "@/lib/site-url";
 
@@ -21,13 +21,14 @@ async function verifyGuestOwnership(eventId: string, guestId: string): Promise<b
 }
 
 /**
- * Builds the invite message and queues a send_jobs row for it — the
- * pg_cron-scheduled dispatch_send_jobs() picks it up within a minute
- * (see supabase/migrations/0004_send_jobs_pg_cron.sql). Also writes a
- * "queued" delivery_events row immediately, so the status view reflects
- * it right away rather than waiting for the next cron tick.
+ * Builds the invite message and sends it via NextSMS directly and
+ * synchronously (see DECISIONS.md, "5.1 revised again" — no queue, no
+ * pg_cron). Every attempt (success or failure) is logged as a
+ * delivery_events row, which is the source of truth the status page
+ * reads. A failed send is left as-is for the organiser to retry
+ * manually — no automatic retry.
  */
-async function queueSend(guestId: string, eventId: string): Promise<void> {
+async function sendNow(guestId: string, eventId: string): Promise<void> {
   const context = await loadGuestForSend(guestId);
   if (!context) {
     throw new Error("Guest not found.");
@@ -38,27 +39,19 @@ async function queueSend(guestId: string, eventId: string): Promise<void> {
   const text = getInviteSmsText(context.language, context.fullName, context.eventName, inviteUrl);
 
   const attemptNumber = await nextAttemptNumber(guestId);
+  const result = await new NextSmsProvider().send({ to: context.phoneE164, text });
+
   await recordDeliveryEvent({
     guestId,
     eventId,
     channel: "sms",
     provider: "nextsms",
-    status: "queued",
+    status: result.ok ? "sent" : "failed",
     attemptNumber,
+    providerMessageId: result.ok ? result.providerMessageId : null,
+    errorCode: result.ok ? null : result.errorCode,
+    errorMessage: result.ok ? null : result.errorMessage,
   });
-
-  const admin = createAdminClient();
-  const { error } = await admin.from("send_jobs").insert({
-    guest_id: guestId,
-    event_id: eventId,
-    attempt_number: attemptNumber,
-    to_phone: context.phoneE164,
-    message_text: text,
-  });
-
-  if (error) {
-    throw new Error(`Failed to queue send: ${error.message}`);
-  }
 }
 
 export async function sendInvite(eventId: string, guestId: string): Promise<void> {
@@ -67,7 +60,7 @@ export async function sendInvite(eventId: string, guestId: string): Promise<void
     throw new Error("Guest not found.");
   }
 
-  await queueSend(guestId, eventId);
+  await sendNow(guestId, eventId);
 
   revalidatePath(`/dashboard/events/${eventId}/guests`);
   revalidatePath(`/dashboard/events/${eventId}/deliveries`);
@@ -87,7 +80,7 @@ export async function sendAllPending(eventId: string): Promise<{ count: number }
 
   const pending = guests ?? [];
   for (const guest of pending) {
-    await queueSend(guest.id, eventId);
+    await sendNow(guest.id, eventId);
   }
 
   revalidatePath(`/dashboard/events/${eventId}/guests`);

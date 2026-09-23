@@ -14,10 +14,10 @@ conversation; every `>>> DECISION` checkpoint answered so far is recorded in
 - Tailwind for styling
 - NextSMS for SMS (sender ID `ZUKA EVENTS` — the brief originally said
   `ZUKA`, but that's not what's actually registered in the NextSMS
-  account; corrected 2026-09-23 after live testing), called directly from Postgres via
-  `pg_net`, scheduled by `pg_cron` — no separate job-queue vendor (see
-  "Delivery (Phase 4)" below and decision 5.1's 2026-09-23 revision in
-  `DECISIONS.md`)
+  account; corrected 2026-09-23 after live testing), called directly and
+  synchronously from the Next.js server action — no job queue, no
+  third-party job-queue vendor (see "Delivery (Phase 4)" below and
+  decision 5.1's two 2026-09-23 revisions in `DECISIONS.md`)
 - Google Sheets (one-way mirror, service account) — Phase 6
 - Sentry for error tracking — Phase 7
 
@@ -49,7 +49,7 @@ front-load all of them. What's marked "needed now" below is for Phase 1.
 | `SUPABASE_SERVICE_ROLE_KEY` | Same page, "service_role" secret — server-only, never expose client-side | **Yes** |
 | `SUPABASE_DB_URL` | Project Settings → Database → Connection string | **Yes**, to apply migrations |
 | Vercel project + env vars per environment | vercel.com → New Project, import this repo | Not yet — local dev is enough for Phase 1 |
-| NextSMS account, API key, sender ID `ZUKA EVENTS` | nextsms.co.tz — Settings → API. As of 2026-09-23 this sender is registered but not yet approved (`Sender Names` tab shows `Status: No`) — the delivery layer handles that gracefully. **The key goes into Supabase Vault, not `.env`/Vercel** — see "Delivery (Phase 4)" below | **Yes**, for Phase 4 |
+| NextSMS account, API key, sender ID `ZUKA EVENTS` | nextsms.co.tz dashboard → Customer Info → Customization → API Keys. As of 2026-09-23 this sender is registered but not yet approved (`Sender Names` tab shows `Status: No`) — the delivery layer handles that gracefully. The key goes into `NEXTSMS_API_KEY` in `.env`/Vercel, same as any other credential — see "Delivery (Phase 4)" below | **Yes**, for Phase 4 |
 | NextSMS delivery-report/webhook docs | Same dashboard, or your account rep — whatever page/PDF describes delivery callbacks | **Not blocking Phase 4**, but the webhook receiver (`app/api/webhooks/nextsms/route.ts`) stays a stub returning 501 until this exists — see "NextSMS webhooks" below |
 | Google Cloud service account JSON + Sheets API enabled | console.cloud.google.com — share your sheet with the service account's email as Editor | Phase 6 |
 | Sentry DSN | sentry.io → new project | Phase 7 |
@@ -75,6 +75,13 @@ Schema and RLS policies live in `supabase/migrations/`, applied in order:
   policy on `guests`. **Apply this before re-running either seed
   script** — both now look up a real theme by name rather than creating
   a placeholder.
+- `0004_send_jobs_pg_cron.sql` / `0005_drop_send_jobs_pg_cron.sql` — an
+  abandoned delivery architecture (`send_jobs` queue + `pg_cron`/`pg_net`)
+  and its teardown; see "Delivery (Phase 4)" below. Skip `0004` entirely
+  on a fresh project — go straight from `0003` to whatever the current
+  delivery code needs, which as of this architecture is nothing further
+  (sending needs no migration, just `NEXTSMS_API_KEY`). Only apply `0005`
+  if `0004` was applied previously.
 
 `lib/types/database.ts` is a **hand-written** TypeScript type matching
 these migrations, used to type the Supabase clients until a real project
@@ -107,64 +114,54 @@ than deduplicating.
 
 ## Delivery (Phase 4)
 
-**Live status as of 2026-09-23**: the pipeline itself works end-to-end
-(`send_jobs` correctly moves `pending` → `requested` → `done`, responses
-get collected, failures get logged with real reasons) — verified against
-the real NextSMS API through several rounds of live debugging. The one
-thing currently blocking an actual successful send is that the `ZUKA
-EVENTS` sender ID hasn't been approved by NextSMS yet (their `Sender
-Names` dashboard tab shows `Status: No`, `Processed: No`), which is
-exactly the scenario the brief anticipated — every attempt fails cleanly
-with `403 Not Authorized`, logged and visible in the delivery status
-page, nothing crashes. No further debugging needed here; once NextSMS
-approves the sender, sending should just start working.
+**Live status as of 2026-09-23**: sending is implemented and unit tested,
+but no real SMS has been confirmed delivered yet — blocked on NextSMS
+approving the `ZUKA EVENTS` sender ID (their `Sender Names` dashboard tab
+shows `Status: No`, `Processed: No`). This is exactly the scenario the
+brief anticipated — every attempt against an unapproved sender fails
+cleanly with `403 Not Authorized`, logged with that reason and visible on
+the delivery status page, nothing crashes. Testing against an
+already-approved sender (e.g. `MICHANGO`, via `NEXTSMS_SENDER_ID`) is the
+way to confirm the pipeline works end-to-end before `ZUKA EVENTS` is
+approved.
 
-No third-party job queue (see decision 5.1's 2026-09-23 revision in
-`DECISIONS.md` — Inngest was removed). Sending runs entirely on
-Supabase's `pg_cron` + `pg_net`, defined in
-`supabase/migrations/0004_send_jobs_pg_cron.sql`:
+No job queue and no third-party job-queue vendor (see decision 5.1's two
+2026-09-23 revisions in `DECISIONS.md` — first Inngest was dropped for
+Supabase `pg_cron`/`pg_net`, then that was dropped too, after live
+debugging showed real friction with `pg_net`'s async two-step
+dispatch/collect split and its SQL/plpgsql business logic having no unit
+test story). Sending is now a single direct, synchronous call:
 
 1. A "Send"/"Resend" button per guest, or "Send to all pending" on the
    guest list, builds the guest's personalized message and invite link in
-   TypeScript (`lib/i18n.ts`'s `getInviteSmsText`,
-   `delivery-actions.ts`), writes a `queued` row into `delivery_events`
-   immediately, and inserts a row into `send_jobs` — a plain work-queue
-   table, not itself the source of truth (`delivery_events` still is).
-2. Every minute, `dispatch_send_jobs()` (scheduled via `cron.schedule`)
-   fires the NextSMS HTTP request for pending jobs using `net.http_post`.
-   `pg_net` is asynchronous — this returns a request id immediately, not
-   a response.
-3. Every minute, `collect_send_responses()` reads whatever responses have
-   landed in `net._http_response`, logs a `sent` or `failed` row to
-   `delivery_events`, and — for a *retriable* failure only (network
-   error, NextSMS 5xx) — automatically queues one more attempt, up to 3
-   total. A *permanent* failure (bad number, unapproved sender, any 4xx)
-   is logged once and left for the organiser to retry manually from the
-   "Delivery status" page, same as before. A request that never gets a
-   response at all within 10 minutes is given up on rather than left
-   stuck.
+   TypeScript (`lib/i18n.ts`'s `getInviteSmsText`), then calls
+   `NextSmsProvider.send()` (`lib/delivery/nextsms.ts`) directly from the
+   server action (`delivery-actions.ts`) and waits for the result.
+2. Whatever NextSMS returns — success or failure — is logged immediately
+   as one `delivery_events` row (`sent` or `failed`, with the provider's
+   message ID or error code/message). `delivery_events` is the only
+   source of truth; there's no separate queue table.
+3. A failed send (any reason — bad number, unapproved sender, network
+   error, NextSMS 5xx) is logged once and left for the organiser to retry
+   manually via the "Retry" button on the delivery status page. No
+   automatic retry.
 
-**One-time setup after applying `0004_send_jobs_pg_cron.sql`**: put your
-real NextSMS API key into Supabase Vault (never into a file that gets
-committed to git) by running this once in the SQL Editor:
+**Setup**: put your real NextSMS API key into `NEXTSMS_API_KEY` in `.env`
+(local) or your Vercel project's environment variables (deployed) — same
+as any other credential in this project, never committed to git. Set
+`NEXTSMS_SENDER_ID` only to override the default `ZUKA EVENTS` (e.g. for
+testing against an already-approved sender).
 
-```sql
-select vault.create_secret('<your NextSMS API key>', 'nextsms_api_key');
-```
-
-If `pg_cron` or `pg_net` aren't already enabled on your project, the
-migration's `create extension if not exists` lines handle that — if
-those fail for a permissions reason, enable both from the Supabase
-dashboard's Database → Extensions page instead, then re-run the rest of
-the migration.
-
-**To check it's actually running**, in the SQL Editor:
-
-```sql
-select * from cron.job;                                          -- both jobs scheduled?
-select * from cron.job_run_details order by start_time desc limit 20;  -- recent runs, any errors?
-select * from send_jobs order by created_at desc limit 20;       -- queue state
-```
+If you previously applied `0004_send_jobs_pg_cron.sql` (an earlier
+architecture, now abandoned), apply
+`supabase/migrations/0005_drop_send_jobs_pg_cron.sql` to tear down the
+`send_jobs` table, its two scheduled functions, and their `pg_cron`
+schedules. It leaves the `pg_net`/`pg_cron` extensions themselves enabled
+(unused, harmless) and leaves the `nextsms_api_key` Vault secret in place
+(also unused, harmless) rather than risk affecting anything else that
+might depend on them. A fresh project that never ran `0004` doesn't need
+`0005` either, but it's safe to run regardless (every statement is
+`if exists`/`if not exists`).
 
 **Auth**: NextSMS uses Bearer token auth (`Authorization: Bearer <token>`,
 token from their dashboard under Customer Info → Customization → API
@@ -183,7 +180,9 @@ worse than not having the endpoint at all, so
 available. Without it, delivery status stops at `sent` — no `delivered`
 or `read` transitions.
 
-**Trade-off worth knowing:** the NextSMS integration itself now lives in
-SQL/plpgsql, not TypeScript, so it's no longer covered by `npm test` —
-verifying it means actually watching `send_jobs`/`delivery_events` in a
-real Supabase project, which needs your NextSMS credentials in Vault.
+**Trade-off worth knowing:** a bulk "Send to all pending" on a large
+guest list sends one at a time, synchronously, inside a single server
+action — real for a Phase 7 (500-guest) load test against Vercel's
+function timeout, but not a concern at the guest-list sizes Phase 4
+exercises. Revisit if/when that phase's load test shows it's actually a
+problem (see DECISIONS.md's "5.1 revised again" entry).
