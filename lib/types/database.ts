@@ -304,6 +304,36 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      send_jobs: {
+        Row: {
+          id: string;
+          guest_id: string;
+          event_id: string;
+          attempt_number: number;
+          to_phone: string;
+          message_text: string;
+          status: "pending" | "requested" | "done";
+          net_request_id: number | null;
+          requested_at: string | null;
+          next_attempt_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          guest_id: string;
+          event_id: string;
+          attempt_number: number;
+          to_phone: string;
+          message_text: string;
+          status?: "pending" | "requested" | "done";
+          net_request_id?: number | null;
+          requested_at?: string | null;
+          next_attempt_at?: string;
+          created_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {

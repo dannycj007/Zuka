@@ -12,8 +12,10 @@ conversation; every `>>> DECISION` checkpoint answered so far is recorded in
 - Next.js (App Router) + TypeScript, deployed on Vercel
 - Supabase — Postgres, Auth, Storage, Realtime, Row Level Security
 - Tailwind for styling
-- NextSMS for SMS (sender ID `ZUKA`)
-- Inngest for background jobs/retries
+- NextSMS for SMS (sender ID `ZUKA`), called directly from Postgres via
+  `pg_net`, scheduled by `pg_cron` — no separate job-queue vendor (see
+  "Delivery (Phase 4)" below and decision 5.1's 2026-09-23 revision in
+  `DECISIONS.md`)
 - Google Sheets (one-way mirror, service account) — Phase 6
 - Sentry for error tracking — Phase 7
 
@@ -45,9 +47,8 @@ front-load all of them. What's marked "needed now" below is for Phase 1.
 | `SUPABASE_SERVICE_ROLE_KEY` | Same page, "service_role" secret — server-only, never expose client-side | **Yes** |
 | `SUPABASE_DB_URL` | Project Settings → Database → Connection string | **Yes**, to apply migrations |
 | Vercel project + env vars per environment | vercel.com → New Project, import this repo | Not yet — local dev is enough for Phase 1 |
-| NextSMS account, API key, sender ID `ZUKA` | nextsms.co.tz — Settings → API. Sender ID approval can take time; the delivery layer handles a not-yet-approved sender gracefully | **Yes**, for Phase 4 |
+| NextSMS account, API key, sender ID `ZUKA` | nextsms.co.tz — Settings → API. Sender ID approval can take time; the delivery layer handles a not-yet-approved sender gracefully. **The key goes into Supabase Vault, not `.env`/Vercel** — see "Delivery (Phase 4)" below | **Yes**, for Phase 4 |
 | NextSMS delivery-report/webhook docs | Same dashboard, or your account rep — whatever page/PDF describes delivery callbacks | **Not blocking Phase 4**, but the webhook receiver (`app/api/webhooks/nextsms/route.ts`) stays a stub returning 501 until this exists — see "NextSMS webhooks" below |
-| Inngest project keys | app.inngest.com → create an app, Settings → Keys | **Yes**, for Phase 4 in production (local dev can run without these — see below) |
 | Google Cloud service account JSON + Sheets API enabled | console.cloud.google.com — share your sheet with the service account's email as Editor | Phase 6 |
 | Sentry DSN | sentry.io → new project | Phase 7 |
 | Mobile money credentials | Not applicable — deferred out of v1 (decision 5.5) | — |
@@ -104,29 +105,66 @@ than deduplicating.
 
 ## Delivery (Phase 4)
 
-Sending an invite: a "Send"/"Resend" button per guest, or "Send to all
-pending" on the guest list, both insert a `queued` row into
-`delivery_events` immediately, then hand off to Inngest
-(`lib/inngest/functions.ts`). The background job sends via NextSMS
-(`lib/delivery/nextsms.ts`), logs a `sent` or `failed` row, and only lets
-Inngest auto-retry on transient failures (network errors, NextSMS 5xx) —
-a permanent failure (bad number, unapproved sender, any 4xx) is logged
-once and left for the organiser to retry manually from the "Delivery
-status" page, not retried silently.
+No third-party job queue (see decision 5.1's 2026-09-23 revision in
+`DECISIONS.md` — Inngest was removed). Sending runs entirely on
+Supabase's `pg_cron` + `pg_net`, defined in
+`supabase/migrations/0004_send_jobs_pg_cron.sql`:
+
+1. A "Send"/"Resend" button per guest, or "Send to all pending" on the
+   guest list, builds the guest's personalized message and invite link in
+   TypeScript (`lib/i18n.ts`'s `getInviteSmsText`,
+   `delivery-actions.ts`), writes a `queued` row into `delivery_events`
+   immediately, and inserts a row into `send_jobs` — a plain work-queue
+   table, not itself the source of truth (`delivery_events` still is).
+2. Every minute, `dispatch_send_jobs()` (scheduled via `cron.schedule`)
+   fires the NextSMS HTTP request for pending jobs using `net.http_post`.
+   `pg_net` is asynchronous — this returns a request id immediately, not
+   a response.
+3. Every minute, `collect_send_responses()` reads whatever responses have
+   landed in `net._http_response`, logs a `sent` or `failed` row to
+   `delivery_events`, and — for a *retriable* failure only (network
+   error, NextSMS 5xx) — automatically queues one more attempt, up to 3
+   total. A *permanent* failure (bad number, unapproved sender, any 4xx)
+   is logged once and left for the organiser to retry manually from the
+   "Delivery status" page, same as before. A request that never gets a
+   response at all within 10 minutes is given up on rather than left
+   stuck.
+
+**One-time setup after applying `0004_send_jobs_pg_cron.sql`**: put your
+real NextSMS API key into Supabase Vault (never into a file that gets
+committed to git) by running this once in the SQL Editor:
+
+```sql
+select vault.create_secret('<your NextSMS API key>', 'nextsms_api_key');
+```
+
+If `pg_cron` or `pg_net` aren't already enabled on your project, the
+migration's `create extension if not exists` lines handle that — if
+those fail for a permissions reason, enable both from the Supabase
+dashboard's Database → Extensions page instead, then re-run the rest of
+the migration.
+
+**To check it's actually running**, in the SQL Editor:
+
+```sql
+select * from cron.job;                                          -- both jobs scheduled?
+select * from cron.job_run_details order by start_time desc limit 20;  -- recent runs, any errors?
+select * from send_jobs order by created_at desc limit 20;       -- queue state
+```
 
 **NextSMS webhooks aren't implemented.** The confirmed parts of their API
 (endpoint, auth header, request body — see the comment in
-`lib/delivery/nextsms.ts`) came from their own public "integrate in 5
-minutes" blog post, found via search since `nextsms.co.tz` itself is
-blocked by this sandbox's network policy. Nothing available documents
-their delivery-report/webhook payload shape or signature scheme, and the
-brief requires verified, idempotent webhook handling — faking that
-verification would be worse than not having the endpoint at all,
-so `app/api/webhooks/nextsms/route.ts` returns 501 until real docs are
-available. Without it, delivery status stops at "sent" — no `delivered`
-or `read` transitions.
+`dispatch_send_jobs()` in the migration) came from their own public
+"integrate in 5 minutes" blog post, found via search since
+`nextsms.co.tz` itself is blocked by this sandbox's network policy.
+Nothing available documents their delivery-report/webhook payload shape
+or signature scheme, and the brief requires verified, idempotent webhook
+handling — faking that verification would be worse than not having the
+endpoint at all, so `app/api/webhooks/nextsms/route.ts` returns 501 until
+real docs are available. Without it, delivery status stops at `sent` —
+no `delivered` or `read` transitions.
 
-**Local dev without real Inngest keys**: run `npx inngest-cli@latest dev`
-alongside `npm run dev` — it runs Inngest's dev server locally and
-auto-discovers functions served from `/api/inngest`, no `INNGEST_EVENT_KEY`
-or `INNGEST_SIGNING_KEY` needed until you deploy to production.
+**Trade-off worth knowing:** the NextSMS integration itself now lives in
+SQL/plpgsql, not TypeScript, so it's no longer covered by `npm test` —
+verifying it means actually watching `send_jobs`/`delivery_events` in a
+real Supabase project, which needs your NextSMS credentials in Vault.

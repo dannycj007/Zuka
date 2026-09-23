@@ -71,3 +71,15 @@ Running record of every `>>> DECISION` checkpoint for ZukaEvents. Append-only �
 **Choice:** Per-event scanner PIN/join code.
 
 **Reasoning:** Gate staff are often hired for the night on a shared device. A PIN/join code gets a device scanning within seconds with no pre-provisioning, matching that reality better than magic links (needs contact info on file ahead of time, adds a delivery channel that can fail) or named sub-accounts (requires advance provisioning per staffer). `gate_label` is captured at code entry and `device_id` automatically, supporting the multi-gate duplicate/conflict logic required in Phase 5.
+
+---
+
+## 2026-09-23 — 5.1 revised: Background job runner (Inngest → Supabase pg_cron + pg_net)
+
+**Question:** Phase 4 was built on Inngest per the original 5.1 answer. Reopened: no third-party job-queue vendor at all.
+
+**Choice:** Supabase `pg_cron` + `pg_net`, with the actual NextSMS HTTP call made directly from Postgres (not a Supabase Edge Function).
+
+**Reasoning:** Removes Inngest as a dependency and account entirely. `pg_net` is asynchronous — a SQL function fires the request and gets a request ID back immediately; the response arrives later in `net._http_response`, polled by a second scheduled function — so this needed two cron-scheduled functions (`dispatch_send_jobs`, `collect_send_responses`) instead of one, plus a `send_jobs` table to track request lifecycle between them. Chose direct `pg_net` calls over a Supabase Edge Function specifically to avoid introducing the Supabase CLI (`supabase functions deploy`) as a new tool in this project — everything ships as another SQL migration, the same paste-into-the-SQL-Editor workflow already in use throughout.
+
+**Trade-off accepted:** the NextSMS integration logic now lives in SQL/plpgsql instead of TypeScript, which is harder to unit test (the previous `lib/delivery/nextsms.ts` and its 6 unit tests were deleted — no TS code makes the HTTP call anymore) and less naturally reusable for a future WhatsApp provider than the channel-agnostic `DeliveryProvider` interface from decision 5.2 would have been. Message text and the invite URL are still built in TypeScript (`lib/i18n.ts`, tested) and stored on the `send_jobs` row at queue time, so the SQL side stays purely mechanical (read a row, fire the request) rather than needing i18n or `NEXT_PUBLIC_SITE_URL` inside Postgres.

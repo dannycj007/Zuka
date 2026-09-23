@@ -1,13 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { DeliveryChannelName, DeliveryProviderName } from "./provider";
-import type { DeliveryStatus } from "@/lib/types/database";
+import type { DeliveryChannel, DeliveryProvider, DeliveryStatus } from "@/lib/types/database";
 
 /**
  * delivery_events is append-only and has no client insert policy (see
  * migration 0002) — every write here goes through the service role,
  * whether from the triggering server action (organiser-authenticated,
- * but the insert itself still needs service role) or from the Inngest
- * background job (no user session to speak of).
+ * but the insert itself still needs service role) or from the pg_cron
+ * job that finalizes each send (see migration 0004).
  */
 
 export type GuestSendContext = {
@@ -68,8 +67,8 @@ export async function nextAttemptNumber(guestId: string): Promise<number> {
 export async function recordDeliveryEvent(input: {
   guestId: string;
   eventId: string;
-  channel: DeliveryChannelName;
-  provider: DeliveryProviderName;
+  channel: DeliveryChannel;
+  provider: DeliveryProvider;
   status: DeliveryStatus;
   attemptNumber: number;
   providerMessageId?: string | null;
