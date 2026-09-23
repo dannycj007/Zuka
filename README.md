@@ -152,17 +152,22 @@ select * from cron.job_run_details order by start_time desc limit 20;  -- recent
 select * from send_jobs order by created_at desc limit 20;       -- queue state
 ```
 
-**NextSMS webhooks aren't implemented.** The confirmed parts of their API
-(endpoint, auth header, request body — see the comment in
-`dispatch_send_jobs()` in the migration) came from their own public
-"integrate in 5 minutes" blog post, found via search since
-`nextsms.co.tz` itself is blocked by this sandbox's network policy.
-Nothing available documents their delivery-report/webhook payload shape
-or signature scheme, and the brief requires verified, idempotent webhook
-handling — faking that verification would be worse than not having the
-endpoint at all, so `app/api/webhooks/nextsms/route.ts` returns 501 until
-real docs are available. Without it, delivery status stops at `sent` —
-no `delivered` or `read` transitions.
+**Auth**: NextSMS uses Bearer token auth (`Authorization: Bearer <token>`,
+token from their dashboard under Customer Info → Customization → API
+Keys) — confirmed from their real API docs after their public "integrate
+in 5 minutes" blog post's `Authorization: Basic <key>` example turned out
+to be wrong (their actual Basic auth option needs base64-encoded
+`username:password`, not a bare key, per standard HTTP Basic auth).
+
+**NextSMS webhooks aren't implemented.** Nothing available documents
+their delivery-report/webhook payload shape or signature scheme
+(`nextsms.co.tz` itself is blocked by this sandbox's network policy, and
+this wasn't in the API docs pages found so far), and the brief requires
+verified, idempotent webhook handling — faking that verification would be
+worse than not having the endpoint at all, so
+`app/api/webhooks/nextsms/route.ts` returns 501 until real docs are
+available. Without it, delivery status stops at `sent` — no `delivered`
+or `read` transitions.
 
 **Trade-off worth knowing:** the NextSMS integration itself now lives in
 SQL/plpgsql, not TypeScript, so it's no longer covered by `npm test` —

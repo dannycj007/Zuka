@@ -13,6 +13,14 @@
 -- "smart" logic in one place (lib/i18n.ts, unit tested) and this file
 -- purely "read a row, fire a request, read the response."
 --
+-- Auth: NextSMS uses Bearer token auth (`Authorization: Bearer <token>`),
+-- the token found in their dashboard under Customer Info -> Customization
+-- -> API Keys. (An earlier version of this file used `Basic <key>` based
+-- on a public blog post that turned out to be wrong — NextSMS's real
+-- Basic auth option requires base64(username:password) like standard
+-- HTTP Basic auth, not a bare key. Bearer is what NextSMS's own docs
+-- recommend and is what's implemented here.)
+--
 -- ---------------------------------------------------------------------
 -- ONE-TIME MANUAL SETUP, not part of this migration (never put a real
 -- API key in a file that gets committed to git):
@@ -90,7 +98,7 @@ begin
       body := jsonb_build_object('from', 'ZUKA', 'to', job.to_phone, 'text', job.message_text),
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Basic ' || api_key
+        'Authorization', 'Bearer ' || api_key
       ),
       timeout_milliseconds := 10000
     ) into req_id;
