@@ -12,7 +12,9 @@ conversation; every `>>> DECISION` checkpoint answered so far is recorded in
 - Next.js (App Router) + TypeScript, deployed on Vercel
 - Supabase — Postgres, Auth, Storage, Realtime, Row Level Security
 - Tailwind for styling
-- NextSMS for SMS (sender ID `ZUKA`), called directly from Postgres via
+- NextSMS for SMS (sender ID `ZUKA EVENTS` — the brief originally said
+  `ZUKA`, but that's not what's actually registered in the NextSMS
+  account; corrected 2026-09-23 after live testing), called directly from Postgres via
   `pg_net`, scheduled by `pg_cron` — no separate job-queue vendor (see
   "Delivery (Phase 4)" below and decision 5.1's 2026-09-23 revision in
   `DECISIONS.md`)
@@ -47,7 +49,7 @@ front-load all of them. What's marked "needed now" below is for Phase 1.
 | `SUPABASE_SERVICE_ROLE_KEY` | Same page, "service_role" secret — server-only, never expose client-side | **Yes** |
 | `SUPABASE_DB_URL` | Project Settings → Database → Connection string | **Yes**, to apply migrations |
 | Vercel project + env vars per environment | vercel.com → New Project, import this repo | Not yet — local dev is enough for Phase 1 |
-| NextSMS account, API key, sender ID `ZUKA` | nextsms.co.tz — Settings → API. Sender ID approval can take time; the delivery layer handles a not-yet-approved sender gracefully. **The key goes into Supabase Vault, not `.env`/Vercel** — see "Delivery (Phase 4)" below | **Yes**, for Phase 4 |
+| NextSMS account, API key, sender ID `ZUKA EVENTS` | nextsms.co.tz — Settings → API. As of 2026-09-23 this sender is registered but not yet approved (`Sender Names` tab shows `Status: No`) — the delivery layer handles that gracefully. **The key goes into Supabase Vault, not `.env`/Vercel** — see "Delivery (Phase 4)" below | **Yes**, for Phase 4 |
 | NextSMS delivery-report/webhook docs | Same dashboard, or your account rep — whatever page/PDF describes delivery callbacks | **Not blocking Phase 4**, but the webhook receiver (`app/api/webhooks/nextsms/route.ts`) stays a stub returning 501 until this exists — see "NextSMS webhooks" below |
 | Google Cloud service account JSON + Sheets API enabled | console.cloud.google.com — share your sheet with the service account's email as Editor | Phase 6 |
 | Sentry DSN | sentry.io → new project | Phase 7 |
@@ -104,6 +106,18 @@ just as plain SQL — safe to rerun, and it adds a new event each time rather
 than deduplicating.
 
 ## Delivery (Phase 4)
+
+**Live status as of 2026-09-23**: the pipeline itself works end-to-end
+(`send_jobs` correctly moves `pending` → `requested` → `done`, responses
+get collected, failures get logged with real reasons) — verified against
+the real NextSMS API through several rounds of live debugging. The one
+thing currently blocking an actual successful send is that the `ZUKA
+EVENTS` sender ID hasn't been approved by NextSMS yet (their `Sender
+Names` dashboard tab shows `Status: No`, `Processed: No`), which is
+exactly the scenario the brief anticipated — every attempt fails cleanly
+with `403 Not Authorized`, logged and visible in the delivery status
+page, nothing crashes. No further debugging needed here; once NextSMS
+approves the sender, sending should just start working.
 
 No third-party job queue (see decision 5.1's 2026-09-23 revision in
 `DECISIONS.md` — Inngest was removed). Sending runs entirely on

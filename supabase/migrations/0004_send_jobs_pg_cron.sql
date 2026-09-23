@@ -95,7 +95,7 @@ begin
   loop
     select net.http_post(
       url := 'https://messaging-service.co.tz/api/sms/v1/text/single',
-      body := jsonb_build_object('from', 'ZUKA', 'to', job.to_phone, 'text', job.message_text),
+      body := jsonb_build_object('from', 'ZUKA EVENTS', 'to', job.to_phone, 'text', job.message_text),
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
         'Authorization', 'Bearer ' || api_key
