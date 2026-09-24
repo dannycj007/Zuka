@@ -1,11 +1,88 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import type { GuestFormState } from "./actions";
 import type { Database } from "@/lib/types/database";
 import { Button } from "@/components/ui/button";
 
 const initialState: GuestFormState = {};
+
+const SALUTATION_OPTIONS = ["Mr", "Mrs", "Miss", "Ms", "Dkt", "Prof", "Rev", "Mzee", "Bibi"];
+const CATEGORY_OPTIONS = ["Family", "Friend", "VIP", "Colleague", "Bridal party", "Vendor", "Media"];
+
+const OTHER = "__other__";
+
+/**
+ * Dropdown of common presets, with an "Other…" option that swaps in a
+ * free-text input. Both salutation and category are plain nullable text
+ * columns (no DB enum) — CSV imports and past edits can carry values
+ * outside these presets, so the field falls back to custom mode already
+ * showing that value rather than silently dropping it.
+ */
+function PresetOrCustomField({
+  id,
+  label,
+  options,
+  value,
+  placeholder,
+}: {
+  id: string;
+  label: string;
+  options: string[];
+  value: string | null | undefined;
+  placeholder: string;
+}) {
+  const initial = value ?? "";
+  const [mode, setMode] = useState<"preset" | "custom">(
+    initial && !options.includes(initial) ? "custom" : "preset",
+  );
+
+  return (
+    <div>
+      <label htmlFor={id} className="field-label">
+        {label}
+      </label>
+      {mode === "preset" ? (
+        <select
+          id={id}
+          name={id}
+          defaultValue={initial}
+          onChange={(e) => {
+            if (e.target.value === OTHER) setMode("custom");
+          }}
+          className="field-select"
+        >
+          <option value="">None</option>
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+          <option value={OTHER}>Other…</option>
+        </select>
+      ) : (
+        <div>
+          <input
+            id={id}
+            name={id}
+            type="text"
+            autoFocus
+            placeholder={placeholder}
+            defaultValue={initial}
+            className="field-input"
+          />
+          <button
+            type="button"
+            onClick={() => setMode("preset")}
+            className="field-hint text-muted-strong hover:text-foreground hover:underline"
+          >
+            Choose from list
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function GuestForm({
   guest,
@@ -19,19 +96,13 @@ export function GuestForm({
   return (
     <form action={formAction} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="salutation" className="field-label">
-            Salutation
-          </label>
-          <input
-            id="salutation"
-            name="salutation"
-            type="text"
-            placeholder="Mr, Mrs, Dkt…"
-            defaultValue={guest?.salutation ?? ""}
-            className="field-input"
-          />
-        </div>
+        <PresetOrCustomField
+          id="salutation"
+          label="Salutation"
+          options={SALUTATION_OPTIONS}
+          value={guest?.salutation}
+          placeholder="Type a salutation"
+        />
         <div>
           <label htmlFor="full_name" className="field-label">
             Full name
@@ -79,19 +150,13 @@ export function GuestForm({
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <div>
-          <label htmlFor="category" className="field-label">
-            Category
-          </label>
-          <input
-            id="category"
-            name="category"
-            type="text"
-            placeholder="VIP, family…"
-            defaultValue={guest?.category ?? ""}
-            className="field-input"
-          />
-        </div>
+        <PresetOrCustomField
+          id="category"
+          label="Category"
+          options={CATEGORY_OPTIONS}
+          value={guest?.category}
+          placeholder="Type a category"
+        />
         <div>
           <label htmlFor="table_label" className="field-label">
             Table
