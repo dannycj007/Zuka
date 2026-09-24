@@ -12,7 +12,7 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "ZukaEvents",
   description: "Digital event invitations and guest check-in for Tanzania.",
-  icons: [{ url: "/logo.webp", type: "image/webp" }],
+  icons: [{ url: "/logo-mark.png", type: "image/png" }],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
