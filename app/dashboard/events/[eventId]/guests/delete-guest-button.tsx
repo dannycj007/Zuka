@@ -22,7 +22,7 @@ export function DeleteGuestButton({
           });
         }
       }}
-      className="text-sm font-medium text-red-600 underline disabled:opacity-60"
+      className="text-sm font-medium text-danger hover:underline disabled:opacity-60"
     >
       {pending ? "Removing…" : "Remove"}
     </button>

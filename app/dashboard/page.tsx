@@ -2,6 +2,16 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { CreateOrgForm } from "./create-org-form";
 import { formatTanzaniaDateTime } from "@/lib/tanzania-time";
+import { PageHeader } from "@/components/ui/page-header";
+import { LinkButton } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
+
+const STATUS_VARIANT: Record<string, BadgeVariant> = {
+  draft: "default",
+  live: "success",
+  closed: "default",
+};
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -28,40 +38,40 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {organisation.name}
-          </h1>
-          <p className="mt-1 text-sm text-zinc-600">Your events</p>
-        </div>
-        <Link
-          href="/dashboard/events/new"
-          className="shrink-0 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white"
-        >
-          New event
-        </Link>
-      </div>
+      <PageHeader
+        eyebrow={organisation.name}
+        title="Your events"
+        actions={<LinkButton href="/dashboard/events/new">+ New event</LinkButton>}
+      />
 
       {!events || events.length === 0 ? (
-        <p className="mt-8 text-sm text-zinc-600">No events yet.</p>
+        <Card className="mt-8 flex flex-col items-center gap-2 px-6 py-16 text-center">
+          <p className="font-display text-lg font-semibold">No events yet</p>
+          <p className="text-sm text-muted">
+            Create your first event to start inviting guests.
+          </p>
+          <LinkButton href="/dashboard/events/new" className="mt-4">
+            + New event
+          </LinkButton>
+        </Card>
       ) : (
-        <ul className="mt-6 divide-y divide-zinc-200 border-y border-zinc-200">
+        <ul className="mt-6 grid gap-3 sm:grid-cols-2">
           {events.map((event) => (
             <li key={event.id}>
-              <Link
-                href={`/dashboard/events/${event.id}`}
-                className="flex items-center justify-between py-3"
-              >
-                <div>
-                  <p className="font-medium">{event.name}</p>
-                  <p className="text-sm text-zinc-600">
-                    {formatTanzaniaDateTime(event.starts_at)}
-                  </p>
-                </div>
-                <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium capitalize text-zinc-700">
-                  {event.status}
-                </span>
+              <Link href={`/dashboard/events/${event.id}`}>
+                <Card className="flex items-center justify-between gap-3 p-4 transition-colors hover:border-border-strong">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-foreground">
+                      {event.name}
+                    </p>
+                    <p className="mt-1 text-sm text-muted">
+                      {formatTanzaniaDateTime(event.starts_at)}
+                    </p>
+                  </div>
+                  <Badge variant={STATUS_VARIANT[event.status] ?? "default"}>
+                    {event.status}
+                  </Badge>
+                </Card>
               </Link>
             </li>
           ))}

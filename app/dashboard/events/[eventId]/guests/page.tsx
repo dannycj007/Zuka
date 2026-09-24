@@ -6,13 +6,24 @@ import { sendInvite, sendAllPending } from "./delivery-actions";
 import { DeleteGuestButton } from "./delete-guest-button";
 import { SendInviteButton } from "./send-invite-button";
 import { SendAllButton } from "./send-all-button";
+import { PageHeader } from "@/components/ui/page-header";
+import { LinkButton } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
 
-const STATUS_STYLES: Record<string, string> = {
-  queued: "bg-zinc-200 text-zinc-700",
-  sent: "bg-blue-100 text-blue-800",
-  delivered: "bg-green-100 text-green-800",
-  read: "bg-green-100 text-green-800",
-  failed: "bg-red-100 text-red-800",
+const DELIVERY_VARIANT: Record<string, BadgeVariant> = {
+  queued: "warning",
+  sent: "info",
+  delivered: "success",
+  read: "success",
+  failed: "danger",
+};
+
+const RSVP_VARIANT: Record<string, BadgeVariant> = {
+  pending: "default",
+  yes: "success",
+  no: "danger",
+  maybe: "warning",
 };
 
 export default async function GuestsPage({
@@ -32,109 +43,102 @@ export default async function GuestsPage({
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Guest list</h1>
-          <p className="mt-1 text-sm text-zinc-600">{event.name}</p>
-        </div>
-        <div className="flex shrink-0 flex-wrap justify-end gap-2">
-          <Link
-            href={`/dashboard/events/${eventId}/deliveries`}
-            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium"
-          >
-            Delivery status
-          </Link>
-          <Link
-            href={`/dashboard/events/${eventId}/guests/import`}
-            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium"
-          >
-            Import CSV
-          </Link>
-          <Link
-            href={`/dashboard/events/${eventId}/guests/new`}
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white"
-          >
-            Add guest
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow={event.name}
+        title="Guest list"
+        actions={
+          <>
+            <LinkButton href={`/dashboard/events/${eventId}/deliveries`} variant="secondary" size="sm">
+              Delivery status
+            </LinkButton>
+            <LinkButton href={`/dashboard/events/${eventId}/guests/import`} variant="secondary" size="sm">
+              Import CSV
+            </LinkButton>
+            <LinkButton href={`/dashboard/events/${eventId}/guests/new`} size="sm">
+              + Add guest
+            </LinkButton>
+          </>
+        }
+      />
 
       {!guests || guests.length === 0 ? (
-        <p className="mt-8 text-sm text-zinc-600">
-          No guests yet. Add one manually or import a CSV.
-        </p>
+        <Card className="mt-8 flex flex-col items-center gap-2 px-6 py-16 text-center">
+          <p className="font-display text-lg font-semibold">No guests yet</p>
+          <p className="text-sm text-muted">Add one manually or import a CSV.</p>
+        </Card>
       ) : (
         <>
           <div className="mt-4">
             <SendAllButton action={sendAllPending.bind(null, eventId)} />
           </div>
 
-          <div className="mt-4 overflow-x-auto">
+          <Card className="mt-4 overflow-x-auto p-0">
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead>
-                <tr className="border-b border-zinc-200 text-zinc-500">
-                  <th className="py-2 pr-4 font-medium">Name</th>
-                  <th className="py-2 pr-4 font-medium">Phone</th>
-                  <th className="py-2 pr-4 font-medium">Category</th>
-                  <th className="py-2 pr-4 font-medium">Table</th>
-                  <th className="py-2 pr-4 font-medium">RSVP</th>
-                  <th className="py-2 pr-4 font-medium">Delivery</th>
-                  <th className="py-2 pr-4 font-medium" />
+                <tr className="border-b border-border text-muted">
+                  <th className="px-4 py-3 font-medium">Name</th>
+                  <th className="px-4 py-3 font-medium">Phone</th>
+                  <th className="px-4 py-3 font-medium">Category</th>
+                  <th className="px-4 py-3 font-medium">Table</th>
+                  <th className="px-4 py-3 font-medium">RSVP</th>
+                  <th className="px-4 py-3 font-medium">Delivery</th>
+                  <th className="px-4 py-3 font-medium" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100">
+              <tbody className="divide-y divide-border">
                 {guests.map((guest) => (
-                  <tr key={guest.id}>
-                    <td className="py-2 pr-4">{guest.full_name}</td>
-                    <td className="py-2 pr-4 whitespace-nowrap">{guest.phone_e164}</td>
-                    <td className="py-2 pr-4">{guest.category ?? "—"}</td>
-                    <td className="py-2 pr-4">{guest.table_label ?? "—"}</td>
-                    <td className="py-2 pr-4 capitalize">{guest.rsvp_status}</td>
-                    <td className="py-2 pr-4">
+                  <tr key={guest.id} className="transition-colors hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 font-medium text-foreground">{guest.full_name}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-muted-strong">
+                      {guest.phone_e164}
+                    </td>
+                    <td className="px-4 py-3 text-muted-strong">{guest.category ?? "—"}</td>
+                    <td className="px-4 py-3 text-muted-strong">{guest.table_label ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant={RSVP_VARIANT[guest.rsvp_status] ?? "default"}>
+                        {guest.rsvp_status}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3">
                       {guest.latest_delivery_status ? (
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
-                            STATUS_STYLES[guest.latest_delivery_status] ?? "bg-zinc-100 text-zinc-700"
-                          }`}
-                        >
+                        <Badge variant={DELIVERY_VARIANT[guest.latest_delivery_status] ?? "default"}>
                           {guest.latest_delivery_status}
-                        </span>
+                        </Badge>
                       ) : (
-                        <span className="text-xs text-zinc-400">Not sent</span>
+                        <span className="text-xs text-muted">Not sent</span>
                       )}
                     </td>
-                    <td className="py-2 pr-4 whitespace-nowrap">
-                      <SendInviteButton
-                        label={guest.latest_delivery_status ? "Resend" : "Send"}
-                        action={sendInvite.bind(null, eventId, guest.id)}
-                      />
-                      <span className="mx-2 text-zinc-300">·</span>
-                      <a
-                        href={`/i/${guest.invite_token}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm font-medium text-zinc-900 underline"
-                      >
-                        View invite
-                      </a>
-                      <span className="mx-2 text-zinc-300">·</span>
-                      <Link
-                        href={`/dashboard/events/${eventId}/guests/${guest.id}/edit`}
-                        className="text-sm font-medium text-zinc-900 underline"
-                      >
-                        Edit
-                      </Link>
-                      <span className="mx-2 text-zinc-300">·</span>
-                      <DeleteGuestButton
-                        guestName={guest.full_name}
-                        action={deleteGuest.bind(null, eventId, guest.id)}
-                      />
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <SendInviteButton
+                          label={guest.latest_delivery_status ? "Resend" : "Send"}
+                          action={sendInvite.bind(null, eventId, guest.id)}
+                        />
+                        <a
+                          href={`/i/${guest.invite_token}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-brand-orange-light hover:underline"
+                        >
+                          View
+                        </a>
+                        <Link
+                          href={`/dashboard/events/${eventId}/guests/${guest.id}/edit`}
+                          className="text-sm font-medium text-muted-strong hover:text-foreground hover:underline"
+                        >
+                          Edit
+                        </Link>
+                        <DeleteGuestButton
+                          guestName={guest.full_name}
+                          action={deleteGuest.bind(null, eventId, guest.id)}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
         </>
       )}
     </div>

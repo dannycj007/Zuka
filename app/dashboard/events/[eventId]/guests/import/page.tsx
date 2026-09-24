@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireEvent } from "@/lib/require-event";
 import { ImportFlow } from "./import-flow";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function ImportGuestsPage({
   params,
@@ -16,8 +17,7 @@ export default async function ImportGuestsPage({
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight">Import guests</h1>
-      <p className="mt-1 text-sm text-zinc-600">{event.name}</p>
+      <PageHeader eyebrow={event.name} title="Import guests" />
       <div className="mt-6">
         <ImportFlow
           eventId={eventId}

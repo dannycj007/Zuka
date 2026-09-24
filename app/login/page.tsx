@@ -3,6 +3,9 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { login, type LoginState } from "./actions";
+import { Logo } from "@/components/ui/logo";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 const initialState: LoginState = {};
 
@@ -12,60 +15,62 @@ export default function LoginPage() {
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Log in to ZukaEvents
-        </h1>
-        <p className="mt-1 text-sm text-zinc-600">
-          Manage your events and guest lists.
-        </p>
+        <div className="flex justify-center">
+          <Logo size={40} />
+        </div>
 
-        <form action={formAction} className="mt-8 space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium">
-              Email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
-            />
-          </div>
+        <Card className="mt-8 p-8">
+          <h1 className="font-display text-xl font-bold tracking-tight">
+            Log in
+          </h1>
+          <p className="mt-1 text-sm text-muted">
+            Manage your events and guest lists.
+          </p>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium">
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
-            />
-          </div>
+          <form action={formAction} className="mt-8 space-y-4">
+            <div>
+              <label htmlFor="email" className="field-label">
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                className="field-input"
+              />
+            </div>
 
-          {state.error && (
-            <p className="text-sm text-red-600" role="alert">
-              {state.error}
-            </p>
-          )}
+            <div>
+              <label htmlFor="password" className="field-label">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                className="field-input"
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={pending}
-            className="w-full rounded-md bg-zinc-900 px-4 py-2 text-base font-medium text-white disabled:opacity-60"
-          >
-            {pending ? "Logging in…" : "Log in"}
-          </button>
-        </form>
+            {state.error && (
+              <p className="field-error" role="alert">
+                {state.error}
+              </p>
+            )}
 
-        <p className="mt-6 text-sm text-zinc-600">
+            <Button type="submit" disabled={pending} className="w-full">
+              {pending ? "Logging in…" : "Log in"}
+            </Button>
+          </form>
+        </Card>
+
+        <p className="mt-6 text-center text-sm text-muted">
           No account yet?{" "}
-          <Link href="/signup" className="font-medium text-zinc-900 underline">
+          <Link href="/signup" className="font-medium text-brand-orange-light hover:underline">
             Sign up
           </Link>
         </p>

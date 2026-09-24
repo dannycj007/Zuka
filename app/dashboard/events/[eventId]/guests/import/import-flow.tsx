@@ -13,14 +13,17 @@ import {
   type ProcessedGuestRow,
 } from "@/lib/csv-import";
 import { importGuests } from "../actions";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
 
 type Step = "upload" | "map" | "preview" | "done";
 
-const STATUS_STYLES: Record<ProcessedGuestRow["status"], string> = {
-  accepted: "bg-green-100 text-green-800",
-  fixed: "bg-amber-100 text-amber-800",
-  duplicate: "bg-zinc-200 text-zinc-700",
-  rejected: "bg-red-100 text-red-800",
+const STATUS_VARIANT: Record<ProcessedGuestRow["status"], BadgeVariant> = {
+  accepted: "success",
+  fixed: "warning",
+  duplicate: "default",
+  rejected: "danger",
 };
 
 export function ImportFlow({
@@ -93,30 +96,36 @@ export function ImportFlow({
 
   if (step === "upload") {
     return (
-      <div>
-        <p className="text-sm text-zinc-600">
+      <Card className="p-6">
+        <p className="text-sm text-muted">
           Upload a CSV of guests. You&apos;ll map its columns next and see
           exactly what will be imported before anything is saved.
         </p>
-        <input
-          type="file"
-          accept=".csv,text/csv"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleFile(file);
-          }}
-          className="mt-4 block text-sm"
-        />
-        {parseError && <p className="mt-2 text-sm text-red-600">{parseError}</p>}
-      </div>
+        <label className="mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border-strong bg-surface-raised px-6 py-10 text-center transition-colors hover:border-brand-orange-light">
+          <span className="text-sm font-medium text-foreground">
+            Choose a CSV file
+          </span>
+          <span className="text-xs text-muted">or drag and drop it here</span>
+          <input
+            type="file"
+            accept=".csv,text/csv"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFile(file);
+            }}
+            className="sr-only"
+          />
+        </label>
+        {parseError && <p className="mt-2 field-error">{parseError}</p>}
+      </Card>
     );
   }
 
   if (step === "map") {
     return (
-      <div>
-        <h2 className="text-lg font-medium">Map your columns</h2>
-        <p className="mt-1 text-sm text-zinc-600">
+      <Card className="p-6">
+        <h2 className="font-display text-lg font-semibold">Map your columns</h2>
+        <p className="mt-1 text-sm text-muted">
           {rows.length} row{rows.length === 1 ? "" : "s"} detected. Full name
           and phone number are required — everything else is optional.
         </p>
@@ -124,10 +133,10 @@ export function ImportFlow({
         <div className="mt-4 space-y-3">
           {GUEST_FIELDS.map((field) => (
             <div key={field} className="flex items-center gap-3">
-              <label className="w-40 shrink-0 text-sm font-medium">
+              <label className="w-40 shrink-0 text-sm font-medium text-muted-strong">
                 {GUEST_FIELD_LABELS[field]}
                 {REQUIRED_GUEST_FIELDS.includes(field) && (
-                  <span className="text-red-600"> *</span>
+                  <span className="text-danger"> *</span>
                 )}
               </label>
               <select
@@ -138,7 +147,7 @@ export function ImportFlow({
                     [field]: e.target.value || undefined,
                   }))
                 }
-                className="block w-full max-w-xs rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-900"
+                className="field-select max-w-xs text-sm"
               >
                 <option value="">Not mapped</option>
                 {headers.map((header) => (
@@ -152,12 +161,12 @@ export function ImportFlow({
         </div>
 
         {rows.length > 0 && (
-          <div className="mt-6 overflow-x-auto rounded-md border border-zinc-200">
+          <div className="mt-6 overflow-x-auto rounded-lg border border-border">
             <table className="w-full min-w-[480px] text-left text-xs">
               <thead>
-                <tr className="border-b border-zinc-200 bg-zinc-50">
+                <tr className="border-b border-border bg-surface-raised">
                   {headers.map((header) => (
-                    <th key={header} className="px-2 py-1.5 font-medium">
+                    <th key={header} className="px-2 py-1.5 font-medium text-muted-strong">
                       {header}
                     </th>
                   ))}
@@ -165,9 +174,9 @@ export function ImportFlow({
               </thead>
               <tbody>
                 {rows.slice(0, 3).map((row, i) => (
-                  <tr key={i} className="border-b border-zinc-100">
+                  <tr key={i} className="border-b border-border">
                     {headers.map((header) => (
-                      <td key={header} className="px-2 py-1.5 text-zinc-600">
+                      <td key={header} className="px-2 py-1.5 text-muted-strong">
                         {row[header]}
                       </td>
                     ))}
@@ -179,70 +188,58 @@ export function ImportFlow({
         )}
 
         {missingRequired.length > 0 && (
-          <p className="mt-3 text-sm text-red-600">
+          <p className="mt-3 field-error">
             Map {missingRequired.map((f) => GUEST_FIELD_LABELS[f]).join(" and ")}{" "}
             to continue.
           </p>
         )}
 
-        <button
+        <Button
           type="button"
           onClick={confirmMapping}
           disabled={missingRequired.length > 0}
-          className="mt-4 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+          className="mt-4"
         >
           Preview import
-        </button>
-      </div>
+        </Button>
+      </Card>
     );
   }
 
   if (step === "preview") {
     return (
-      <div>
-        <h2 className="text-lg font-medium">Preview</h2>
-        <div className="mt-3 flex flex-wrap gap-2 text-sm">
-          <span className="rounded-full bg-green-100 px-3 py-1 font-medium text-green-800">
-            {counts.accepted} accepted
-          </span>
-          <span className="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-800">
-            {counts.fixed} fixed
-          </span>
-          <span className="rounded-full bg-zinc-200 px-3 py-1 font-medium text-zinc-700">
-            {counts.duplicate} duplicate
-          </span>
-          <span className="rounded-full bg-red-100 px-3 py-1 font-medium text-red-800">
-            {counts.rejected} rejected
-          </span>
+      <Card className="p-6">
+        <h2 className="font-display text-lg font-semibold">Preview</h2>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Badge variant="success">{counts.accepted} accepted</Badge>
+          <Badge variant="warning">{counts.fixed} fixed</Badge>
+          <Badge variant="default">{counts.duplicate} duplicate</Badge>
+          <Badge variant="danger">{counts.rejected} rejected</Badge>
         </div>
 
-        <div className="mt-4 max-h-96 overflow-y-auto rounded-md border border-zinc-200">
+        <div className="mt-4 max-h-96 overflow-y-auto rounded-lg border border-border">
           <table className="w-full min-w-[640px] text-left text-xs">
-            <thead className="sticky top-0 bg-zinc-50">
-              <tr className="border-b border-zinc-200">
-                <th className="px-2 py-1.5 font-medium">Row</th>
-                <th className="px-2 py-1.5 font-medium">Status</th>
-                <th className="px-2 py-1.5 font-medium">Name</th>
-                <th className="px-2 py-1.5 font-medium">Phone</th>
-                <th className="px-2 py-1.5 font-medium">Notes</th>
+            <thead className="sticky top-0 bg-surface-raised">
+              <tr className="border-b border-border">
+                <th className="px-2 py-1.5 font-medium text-muted-strong">Row</th>
+                <th className="px-2 py-1.5 font-medium text-muted-strong">Status</th>
+                <th className="px-2 py-1.5 font-medium text-muted-strong">Name</th>
+                <th className="px-2 py-1.5 font-medium text-muted-strong">Phone</th>
+                <th className="px-2 py-1.5 font-medium text-muted-strong">Notes</th>
               </tr>
             </thead>
             <tbody>
               {processed.map((row) => (
-                <tr key={row.rowNumber} className="border-b border-zinc-100 align-top">
-                  <td className="px-2 py-1.5 text-zinc-500">{row.rowNumber}</td>
+                <tr key={row.rowNumber} className="border-b border-border align-top">
+                  <td className="px-2 py-1.5 text-muted">{row.rowNumber}</td>
                   <td className="px-2 py-1.5">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${STATUS_STYLES[row.status]}`}
-                    >
-                      {row.status}
-                    </span>
+                    <Badge variant={STATUS_VARIANT[row.status]}>{row.status}</Badge>
                   </td>
-                  <td className="px-2 py-1.5">{row.guest?.full_name ?? "—"}</td>
-                  <td className="px-2 py-1.5 whitespace-nowrap">
+                  <td className="px-2 py-1.5 text-foreground">{row.guest?.full_name ?? "—"}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap text-muted-strong">
                     {row.guest?.phone_e164 ?? "—"}
                   </td>
-                  <td className="px-2 py-1.5 text-zinc-600">
+                  <td className="px-2 py-1.5 text-muted">
                     {row.reasons.join("; ") || "—"}
                   </td>
                 </tr>
@@ -251,43 +248,38 @@ export function ImportFlow({
           </table>
         </div>
 
-        <div className="mt-4 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={commit}
-            disabled={importableCount === 0 || committing}
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-          >
+        <div className="mt-4 flex items-center gap-4">
+          <Button type="button" onClick={commit} disabled={importableCount === 0 || committing}>
             {committing ? "Importing…" : `Import ${importableCount} guest${importableCount === 1 ? "" : "s"}`}
-          </button>
+          </Button>
           <button
             type="button"
             onClick={() => setStep("map")}
-            className="text-sm font-medium text-zinc-600 underline"
+            className="text-sm font-medium text-muted-strong hover:text-foreground hover:underline"
           >
             Back to mapping
           </button>
         </div>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div>
-      <h2 className="text-lg font-medium">Done</h2>
-      <p className="mt-2 text-sm text-zinc-600">
+    <Card className="p-6">
+      <h2 className="font-display text-lg font-semibold">Done</h2>
+      <p className="mt-2 text-sm text-muted">
         Imported {result?.imported ?? 0} guest{result?.imported === 1 ? "" : "s"}.
         {result && result.skipped > 0 && (
           <> {result.skipped} row{result.skipped === 1 ? " was" : "s were"} skipped as duplicates that appeared since the preview.</>
         )}
       </p>
-      <button
+      <Button
         type="button"
         onClick={() => router.push(`/dashboard/events/${eventId}/guests`)}
-        className="mt-4 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white"
+        className="mt-4"
       >
         Back to guest list
-      </button>
-    </div>
+      </Button>
+    </Card>
   );
 }

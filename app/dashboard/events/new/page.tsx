@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NewEventForm } from "./new-event-form";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
 
 export default async function NewEventPage() {
   const supabase = await createClient();
@@ -10,8 +12,10 @@ export default async function NewEventPage() {
 
   return (
     <div className="mx-auto w-full max-w-lg">
-      <h1 className="text-2xl font-semibold tracking-tight">New event</h1>
-      <NewEventForm themes={themes ?? []} />
+      <PageHeader title="New event" />
+      <Card className="mt-6 p-6">
+        <NewEventForm themes={themes ?? []} />
+      </Card>
     </div>
   );
 }

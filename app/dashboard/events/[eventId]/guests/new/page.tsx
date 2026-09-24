@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { requireEvent } from "@/lib/require-event";
 import { createGuest } from "../actions";
 import { GuestForm } from "../guest-form";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
 
 export default async function NewGuestPage({
   params,
@@ -12,8 +14,10 @@ export default async function NewGuestPage({
 
   return (
     <div className="mx-auto w-full max-w-lg">
-      <h1 className="text-2xl font-semibold tracking-tight">Add guest</h1>
-      <GuestForm action={createGuest.bind(null, eventId)} />
+      <PageHeader title="Add guest" />
+      <Card className="mt-6 p-6">
+        <GuestForm action={createGuest.bind(null, eventId)} />
+      </Card>
     </div>
   );
 }

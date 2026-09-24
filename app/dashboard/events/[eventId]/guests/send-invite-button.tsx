@@ -23,15 +23,15 @@ export function SendInviteButton({
             try {
               await action();
             } catch (err) {
-              setError(err instanceof Error ? err.message : "Couldn't queue that send.");
+              setError(err instanceof Error ? err.message : "Couldn't send that invite.");
             }
           });
         }}
-        className="text-sm font-medium text-zinc-900 underline disabled:opacity-60"
+        className="text-sm font-medium text-brand-orange-light hover:underline disabled:opacity-60"
       >
-        {pending ? "Queuing…" : label}
+        {pending ? "Sending…" : label}
       </button>
-      {error && <span className="ml-2 text-xs text-red-600">{error}</span>}
+      {error && <span className="ml-2 text-xs text-danger">{error}</span>}
     </span>
   );
 }

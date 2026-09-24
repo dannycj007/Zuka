@@ -1,8 +1,11 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireEvent } from "@/lib/require-event";
 import { sendInvite } from "../guests/delivery-actions";
 import { SendInviteButton } from "../guests/send-invite-button";
+import { PageHeader } from "@/components/ui/page-header";
+import { LinkButton } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { StatTile } from "@/components/ui/stat-tile";
 
 const STATUSES = ["queued", "sent", "delivered", "read", "failed"] as const;
 
@@ -54,54 +57,53 @@ export default async function DeliveriesPage({
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Delivery status</h1>
-          <p className="mt-1 text-sm text-zinc-600">{event.name}</p>
-        </div>
-        <Link
-          href={`/dashboard/events/${eventId}/guests`}
-          className="shrink-0 text-sm font-medium text-zinc-900 underline"
-        >
-          Back to guest list
-        </Link>
+      <PageHeader
+        eyebrow={event.name}
+        title="Delivery status"
+        actions={
+          <LinkButton href={`/dashboard/events/${eventId}/guests`} variant="secondary" size="sm">
+            Back to guest list
+          </LinkButton>
+        }
+      />
+
+      <div className="mt-6 grid grid-cols-3 gap-3 sm:grid-cols-6">
+        <StatTile label="Not sent" value={counts.not_sent} />
+        <StatTile label="Queued" value={counts.queued} tone="warning" />
+        <StatTile label="Sent" value={counts.sent} tone="info" />
+        <StatTile label="Delivered" value={counts.delivered} tone="success" />
+        <StatTile label="Read" value={counts.read} tone="success" />
+        <StatTile label="Failed" value={counts.failed} tone={counts.failed > 0 ? "danger" : "default"} />
       </div>
 
-      <dl className="mt-6 grid grid-cols-3 gap-3 sm:grid-cols-6">
-        <StatCard label="Not sent" value={counts.not_sent} />
-        <StatCard label="Queued" value={counts.queued} />
-        <StatCard label="Sent" value={counts.sent} />
-        <StatCard label="Delivered" value={counts.delivered} />
-        <StatCard label="Read" value={counts.read} />
-        <StatCard label="Failed" value={counts.failed} highlight={counts.failed > 0} />
-      </dl>
-
-      <h2 className="mt-10 text-lg font-medium">Failures</h2>
+      <h2 className="mt-10 font-display text-lg font-semibold">Failures</h2>
       {failedGuests.length === 0 ? (
-        <p className="mt-2 text-sm text-zinc-600">No failed deliveries.</p>
+        <p className="mt-2 text-sm text-muted">No failed deliveries.</p>
       ) : (
-        <div className="mt-3 overflow-x-auto">
+        <Card className="mt-3 overflow-x-auto p-0">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
-              <tr className="border-b border-zinc-200 text-zinc-500">
-                <th className="py-2 pr-4 font-medium">Name</th>
-                <th className="py-2 pr-4 font-medium">Phone</th>
-                <th className="py-2 pr-4 font-medium">Reason</th>
-                <th className="py-2 pr-4 font-medium" />
+              <tr className="border-b border-border text-muted">
+                <th className="px-4 py-3 font-medium">Name</th>
+                <th className="px-4 py-3 font-medium">Phone</th>
+                <th className="px-4 py-3 font-medium">Reason</th>
+                <th className="px-4 py-3 font-medium" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100">
+            <tbody className="divide-y divide-border">
               {failedGuests.map((guest) => {
                 const detail = latestErrorByGuest.get(guest.id);
                 return (
                   <tr key={guest.id}>
-                    <td className="py-2 pr-4">{guest.full_name}</td>
-                    <td className="py-2 pr-4 whitespace-nowrap">{guest.phone_e164}</td>
-                    <td className="py-2 pr-4 text-zinc-600">
+                    <td className="px-4 py-3 font-medium text-foreground">{guest.full_name}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-muted-strong">
+                      {guest.phone_e164}
+                    </td>
+                    <td className="px-4 py-3 text-danger">
                       {detail?.error_message ?? "Unknown error"}
                       {detail?.error_code ? ` (${detail.error_code})` : ""}
                     </td>
-                    <td className="py-2 pr-4">
+                    <td className="px-4 py-3">
                       <SendInviteButton label="Retry" action={sendInvite.bind(null, eventId, guest.id)} />
                     </td>
                   </tr>
@@ -109,29 +111,8 @@ export default async function DeliveriesPage({
               })}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  highlight,
-}: {
-  label: string;
-  value: number;
-  highlight?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-lg border p-3 text-center ${
-        highlight ? "border-red-300 bg-red-50" : "border-zinc-200"
-      }`}
-    >
-      <dt className="text-xs text-zinc-500">{label}</dt>
-      <dd className="mt-1 text-xl font-semibold">{value}</dd>
     </div>
   );
 }

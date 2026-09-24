@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createEvent, type EventFormState } from "../actions";
+import { Button } from "@/components/ui/button";
 
 const initialState: EventFormState = {};
 
@@ -18,9 +19,9 @@ export function NewEventForm({ themes }: { themes: { id: string; name: string }[
   const [state, formAction, pending] = useActionState(createEvent, initialState);
 
   return (
-    <form action={formAction} className="mt-6 space-y-4">
+    <form action={formAction} className="space-y-4">
       <div>
-        <label htmlFor="name" className="block text-sm font-medium">
+        <label htmlFor="name" className="field-label">
           Event name
         </label>
         <input
@@ -29,12 +30,12 @@ export function NewEventForm({ themes }: { themes: { id: string; name: string }[
           type="text"
           required
           placeholder="e.g. Amina & Baraka's Wedding"
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
+          className="field-input"
         />
       </div>
 
       <div>
-        <label htmlFor="event_type" className="block text-sm font-medium">
+        <label htmlFor="event_type" className="field-label">
           Event type
         </label>
         <select
@@ -42,7 +43,7 @@ export function NewEventForm({ themes }: { themes: { id: string; name: string }[
           name="event_type"
           required
           defaultValue=""
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
+          className="field-input"
         >
           <option value="" disabled>
             Choose one
@@ -56,7 +57,7 @@ export function NewEventForm({ themes }: { themes: { id: string; name: string }[
       </div>
 
       <div>
-        <label htmlFor="starts_at" className="block text-sm font-medium">
+        <label htmlFor="starts_at" className="field-label">
           Date &amp; time (Africa/Dar es Salaam)
         </label>
         <input
@@ -64,36 +65,36 @@ export function NewEventForm({ themes }: { themes: { id: string; name: string }[
           name="starts_at"
           type="datetime-local"
           required
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
+          className="field-input"
         />
       </div>
 
       <div>
-        <label htmlFor="venue_name" className="block text-sm font-medium">
+        <label htmlFor="venue_name" className="field-label">
           Venue name
         </label>
         <input
           id="venue_name"
           name="venue_name"
           type="text"
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
+          className="field-input"
         />
       </div>
 
       <div>
-        <label htmlFor="venue_address" className="block text-sm font-medium">
+        <label htmlFor="venue_address" className="field-label">
           Venue address
         </label>
         <input
           id="venue_address"
           name="venue_address"
           type="text"
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
+          className="field-input"
         />
       </div>
 
       <div>
-        <label htmlFor="location_link" className="block text-sm font-medium">
+        <label htmlFor="location_link" className="field-label">
           Google Maps location (optional)
         </label>
         <input
@@ -101,9 +102,9 @@ export function NewEventForm({ themes }: { themes: { id: string; name: string }[
           name="location_link"
           type="text"
           placeholder="Paste a Google Maps link, or lat,lng"
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
+          className="field-input"
         />
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="field-hint">
           On the venue&apos;s Google Maps page: Share → Copy link, then
           paste it here. Makes the invite&apos;s map pin precise instead of
           just the typed address.
@@ -111,14 +112,14 @@ export function NewEventForm({ themes }: { themes: { id: string; name: string }[
       </div>
 
       <div>
-        <label htmlFor="language" className="block text-sm font-medium">
+        <label htmlFor="language" className="field-label">
           Invitation language
         </label>
         <select
           id="language"
           name="language"
           defaultValue="en"
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
+          className="field-input"
         >
           <option value="en">English</option>
           <option value="sw">Swahili</option>
@@ -127,14 +128,14 @@ export function NewEventForm({ themes }: { themes: { id: string; name: string }[
 
       {themes.length > 0 && (
         <div>
-          <label htmlFor="theme_id" className="block text-sm font-medium">
+          <label htmlFor="theme_id" className="field-label">
             Theme
           </label>
           <select
             id="theme_id"
             name="theme_id"
             defaultValue={themes[0].id}
-            className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-base outline-none focus:border-zinc-900"
+            className="field-input"
           >
             {themes.map((theme) => (
               <option key={theme.id} value={theme.id}>
@@ -146,18 +147,14 @@ export function NewEventForm({ themes }: { themes: { id: string; name: string }[
       )}
 
       {state.error && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="field-error" role="alert">
           {state.error}
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full rounded-md bg-zinc-900 px-4 py-2 text-base font-medium text-white disabled:opacity-60"
-      >
+      <Button type="submit" disabled={pending} className="w-full">
         {pending ? "Creating…" : "Create event"}
-      </button>
+      </Button>
     </form>
   );
 }

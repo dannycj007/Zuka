@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Button } from "@/components/ui/button";
 
 export function SendAllButton({
   action,
@@ -11,9 +12,11 @@ export function SendAllButton({
   const [result, setResult] = useState<string | null>(null);
 
   return (
-    <span className="inline-flex items-center gap-2">
-      <button
+    <span className="inline-flex items-center gap-3">
+      <Button
         type="button"
+        variant="secondary"
+        size="sm"
         disabled={pending}
         onClick={() => {
           setResult(null);
@@ -23,18 +26,17 @@ export function SendAllButton({
               setResult(
                 count === 0
                   ? "Everyone's already been sent an invite."
-                  : `Queued ${count} invite${count === 1 ? "" : "s"}.`,
+                  : `Sent ${count} invite${count === 1 ? "" : "s"}.`,
               );
             } catch (err) {
-              setResult(err instanceof Error ? err.message : "Couldn't queue sends.");
+              setResult(err instanceof Error ? err.message : "Couldn't send invites.");
             }
           });
         }}
-        className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium disabled:opacity-60"
       >
-        {pending ? "Queuing…" : "Send to all pending"}
-      </button>
-      {result && <span className="text-xs text-zinc-600">{result}</span>}
+        {pending ? "Sending…" : "Send to all pending"}
+      </Button>
+      {result && <span className="text-xs text-muted">{result}</span>}
     </span>
   );
 }

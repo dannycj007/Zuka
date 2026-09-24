@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { requireEvent } from "@/lib/require-event";
 import { updateEvent } from "../../actions";
 import { EditEventForm } from "./edit-event-form";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
 
 export default async function EditEventPage({
   params,
@@ -16,12 +18,14 @@ export default async function EditEventPage({
 
   return (
     <div className="mx-auto w-full max-w-lg">
-      <h1 className="text-2xl font-semibold tracking-tight">Edit event</h1>
-      <EditEventForm
-        event={event}
-        themes={themes ?? []}
-        action={updateEvent.bind(null, eventId)}
-      />
+      <PageHeader title="Edit event" description={event.name} />
+      <Card className="mt-6 p-6">
+        <EditEventForm
+          event={event}
+          themes={themes ?? []}
+          action={updateEvent.bind(null, eventId)}
+        />
+      </Card>
     </div>
   );
 }
