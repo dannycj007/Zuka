@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Logo } from "@/components/ui/logo";
+import { NavArrows } from "@/components/ui/nav-arrows";
 import { logout } from "./actions";
 
 export default async function DashboardLayout({
@@ -20,9 +21,12 @@ export default async function DashboardLayout({
     <div className="flex min-h-full flex-1 flex-col">
       <header className="border-b border-border bg-surface/80 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
-          <Link href="/dashboard">
-            <Logo size={28} />
-          </Link>
+          <div className="flex items-center gap-3">
+            <NavArrows />
+            <Link href="/dashboard">
+              <Logo size={28} />
+            </Link>
+          </div>
           <form action={logout}>
             <button
               type="submit"
