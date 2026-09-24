@@ -9,6 +9,7 @@ import { getMapsUrl, getMapEmbedUrl, getGoogleCalendarUrl } from "@/lib/invite-l
 import { getSiteUrl } from "@/lib/site-url";
 import { Countdown } from "./countdown";
 import { RsvpButtons } from "./rsvp-buttons";
+import { NavArrows } from "@/components/ui/nav-arrows";
 
 export async function generateMetadata({
   params,
@@ -52,6 +53,8 @@ export default async function InvitePage({
       className="min-h-screen bg-[var(--zuka-bg)] text-[var(--zuka-fg)]"
     >
       <div className="mx-auto flex max-w-md flex-col gap-6 px-5 py-10">
+        <NavArrows buttonClassName="text-[var(--zuka-fg)] opacity-60 hover:opacity-100" />
+
         <header>
           <p className="text-sm opacity-70">{dict.greeting(invite.fullName)}</p>
           <h1 className="mt-1 text-2xl font-semibold leading-snug">
