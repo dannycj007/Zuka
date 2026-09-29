@@ -18,6 +18,9 @@ conversation; every `>>> DECISION` checkpoint answered so far is recorded in
   synchronously from the Next.js server action — no job queue, no
   third-party job-queue vendor (see "Delivery (Phase 4)" below and
   decision 5.1's two 2026-09-23 revisions in `DECISIONS.md`)
+- WhatsApp via Meta's Cloud API directly (no BSP) — decision 5.2's
+  2026-09-29 addition, same synchronous-send shape as NextSMS (see
+  "WhatsApp (Meta Cloud API)" below)
 - Google Sheets (one-way mirror, service account) — Phase 6
 - Sentry for error tracking — Phase 7
 
@@ -51,6 +54,7 @@ front-load all of them. What's marked "needed now" below is for Phase 1.
 | Vercel project + env vars per environment | vercel.com → New Project, import this repo | Not yet — local dev is enough for Phase 1 |
 | NextSMS account, API key, sender ID `ZUKA EVENTS` | nextsms.co.tz dashboard → Customer Info → Customization → API Keys. As of 2026-09-23 this sender is registered but not yet approved (`Sender Names` tab shows `Status: No`) — the delivery layer handles that gracefully. The key goes into `NEXTSMS_API_KEY` in `.env`/Vercel, same as any other credential — see "Delivery (Phase 4)" below | **Yes**, for Phase 4 |
 | NextSMS delivery-report/webhook docs | Same dashboard, or your account rep — whatever page/PDF describes delivery callbacks | **Not blocking Phase 4**, but the webhook receiver (`app/api/webhooks/nextsms/route.ts`) stays a stub returning 501 until this exists — see "NextSMS webhooks" below |
+| Meta system-user access token, WhatsApp Phone Number ID, approved message template | business.facebook.com → your Business Manager. See "WhatsApp (Meta Cloud API)" below for the exact steps and template text | Optional — only if you want WhatsApp sending, added 2026-09-29 |
 | Google Cloud service account JSON + Sheets API enabled | console.cloud.google.com — share your sheet with the service account's email as Editor | Phase 6 |
 | Sentry DSN | sentry.io → new project | Phase 7 |
 | Mobile money credentials | Not applicable — deferred out of v1 (decision 5.5) | — |
@@ -186,3 +190,96 @@ action — real for a Phase 7 (500-guest) load test against Vercel's
 function timeout, but not a concern at the guest-list sizes Phase 4
 exercises. Revisit if/when that phase's load test shows it's actually a
 problem (see DECISIONS.md's "5.1 revised again" entry).
+
+## WhatsApp (Meta Cloud API)
+
+Decision 5.2 deferred WhatsApp to "a later, isolated addition" — this is
+that addition, added 2026-09-29. Same shape as NextSMS: `WhatsAppProvider`
+(`lib/delivery/whatsapp.ts`) implements the same `DeliveryProvider`
+interface and is called directly and synchronously from the same
+`delivery-actions.ts`, no queue. The guest list and delivery status pages
+now show separate SMS and WhatsApp buttons per guest — see the trade-off
+note below on why they're not labeled Send/Resend per channel.
+
+**Why a template message, not free text:** WhatsApp only allows free-form
+text replies within a 24-hour window after the *user* messages the
+business first. An organiser sending an invite is always
+business-initiated, so it must go through a pre-approved message
+**template** — there's no way around this, it's a Meta policy, not a
+technical limitation this app could route around.
+
+### One-time setup in Meta Business Manager
+
+1. **System user + access token**: Business Settings → System users →
+   Add. Assign it your WhatsApp Business Account with the
+   `whatsapp_business_messaging` permission, then generate a token —
+   pick the permanent (non-expiring) option, not the 23-hour test token.
+   Copy it immediately; Meta only shows it once. → `WHATSAPP_ACCESS_TOKEN`.
+2. **Phone Number ID**: your app's dashboard → WhatsApp → API Setup —
+   the numeric Phone Number ID shown there, not the phone number itself.
+   → `WHATSAPP_PHONE_NUMBER_ID`.
+3. **Message template**: WhatsApp Manager → Message Templates → Create.
+   Submit this body text (matches the existing SMS copy in
+   `lib/i18n.ts`'s `getInviteSmsText`, so both channels read the same to
+   a guest who somehow gets both) with 3 variables:
+
+   English (`en_US`):
+   > Hi {{1}}! You're invited to {{2}}. View your invite: {{3}}
+
+   Swahili (`swa` — WhatsApp's own code for Swahili, **not** `sw`;
+   confirmed against Meta's supported-languages list since it's a real
+   gotcha that fails silently as "template not found" rather than an
+   auth error): submit the same template name with this body as a
+   second language/translation:
+   > Habari {{1}}! Umealikwa kwenye {{2}}. Tazama mwaliko wako: {{3}}
+
+   Use the same template `name` for both languages — this app requests
+   whichever language code matches the event's language at send time.
+   **Category matters and I won't guess it for you**: Meta's review
+   decides whether this counts as `UTILITY` or `MARKETING`. An
+   unsolicited event invite to someone who hasn't explicitly opted in to
+   WhatsApp messages from you is a genuine gray area under Meta's
+   Business Messaging Policy, not just a technicality — if Meta comes
+   back with `MARKETING`, that template carries per-conversation cost
+   and stricter opt-in expectations. Worth reading Meta's policy on
+   this yourself before submitting, since it's a compliance call for
+   your business, not something I can make for you.
+   → `WHATSAPP_TEMPLATE_NAME` (the template's `name`, not its display title).
+4. **Webhook** (Meta's "Configure Webhooks" dashboard step): Callback
+   URL is `https://<your-deployed-domain>/api/webhooks/whatsapp`
+   (`app/api/webhooks/whatsapp/route.ts` handles the verification
+   handshake for real). Verify token is a secret you invent — put the
+   same string in that field and in `WHATSAPP_WEBHOOK_VERIFY_TOKEN`.
+   Not needed for local dev/testing, only for the dashboard to let you
+   move past that step.
+5. **Add payment / Business Verification**: pure Meta Business Manager
+   steps with nothing in this codebase — follow their dashboard.
+
+### Live status as of 2026-09-29
+
+Code is written and unit tested (`lib/delivery/whatsapp.test.ts`), but
+**no real message has been sent yet** — your Business Manager account
+exists but Business Verification hasn't completed. Until it does, Meta
+only allows sending to up to 5 phone numbers you've manually added as
+test recipients in the App Dashboard, not your real guest list. Every
+send attempt outside that constraint fails cleanly and gets logged to
+`delivery_events` with Meta's real error message, same graceful-failure
+pattern as NextSMS's pre-approval period.
+
+**Trade-off worth knowing:** no automatic WhatsApp→SMS fallback (the
+original brief's Inngest-era plan had one). Building that needs the
+webhook's POST handler fully wired to know whether a WhatsApp send
+actually landed before falling back — right now POST only returns 200
+so Meta doesn't disable the subscription, it doesn't process delivery
+status into `delivery_events` yet (see the comment in
+`app/api/webhooks/whatsapp/route.ts` for exactly what's left). Until
+then, the guest list gives the organiser two explicit buttons (SMS,
+WhatsApp) instead of guessing which channel to try.
+
+**Also worth knowing:** `latest_delivery_status` is one denormalized
+column per guest (whichever channel was attempted most recently wins),
+not tracked separately per channel — see `sync_guest_delivery_status()`
+in `0001_init.sql`. That's why the guest list's buttons are labeled
+plainly "SMS" / "WhatsApp" rather than "Send"/"Resend": this app can't
+tell from that column alone whether WhatsApp specifically was ever
+tried for a guest whose last SMS succeeded.

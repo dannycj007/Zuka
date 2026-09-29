@@ -111,8 +111,12 @@ export default async function GuestsPage({
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         <SendInviteButton
-                          label={guest.latest_delivery_status ? "Resend" : "Send"}
-                          action={sendInvite.bind(null, eventId, guest.id)}
+                          label="SMS"
+                          action={sendInvite.bind(null, eventId, guest.id, "sms")}
+                        />
+                        <SendInviteButton
+                          label="WhatsApp"
+                          action={sendInvite.bind(null, eventId, guest.id, "whatsapp")}
                         />
                         <a
                           href={`/i/${guest.invite_token}`}

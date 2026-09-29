@@ -35,11 +35,16 @@ export default async function DeliveriesPage({
 
   const failedGuests = allGuests.filter((g) => g.latest_delivery_status === "failed");
 
-  let failedEvents: { guest_id: string; error_code: string | null; error_message: string | null }[] = [];
+  let failedEvents: {
+    guest_id: string;
+    channel: string;
+    error_code: string | null;
+    error_message: string | null;
+  }[] = [];
   if (failedGuests.length > 0) {
     const { data } = await supabase
       .from("delivery_events")
-      .select("guest_id, error_code, error_message, created_at")
+      .select("guest_id, channel, error_code, error_message, created_at")
       .eq("event_id", eventId)
       .eq("status", "failed")
       .order("created_at", { ascending: false });
@@ -48,10 +53,17 @@ export default async function DeliveriesPage({
 
   // Most recent failure per guest — first occurrence wins since the
   // query above is already ordered newest-first.
-  const latestErrorByGuest = new Map<string, { error_code: string | null; error_message: string | null }>();
+  const latestErrorByGuest = new Map<
+    string,
+    { channel: string; error_code: string | null; error_message: string | null }
+  >();
   for (const row of failedEvents) {
     if (!latestErrorByGuest.has(row.guest_id)) {
-      latestErrorByGuest.set(row.guest_id, { error_code: row.error_code, error_message: row.error_message });
+      latestErrorByGuest.set(row.guest_id, {
+        channel: row.channel,
+        error_code: row.error_code,
+        error_message: row.error_message,
+      });
     }
   }
 
@@ -86,6 +98,7 @@ export default async function DeliveriesPage({
               <tr className="border-b border-border text-muted">
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Phone</th>
+                <th className="px-4 py-3 font-medium">Channel</th>
                 <th className="px-4 py-3 font-medium">Reason</th>
                 <th className="px-4 py-3 font-medium" />
               </tr>
@@ -93,18 +106,30 @@ export default async function DeliveriesPage({
             <tbody className="divide-y divide-border">
               {failedGuests.map((guest) => {
                 const detail = latestErrorByGuest.get(guest.id);
+                const failedChannel = detail?.channel === "whatsapp" ? "whatsapp" : "sms";
+                const otherChannel = failedChannel === "whatsapp" ? "sms" : "whatsapp";
                 return (
                   <tr key={guest.id}>
                     <td className="px-4 py-3 font-medium text-foreground">{guest.full_name}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-muted-strong">
                       {guest.phone_e164}
                     </td>
+                    <td className="px-4 py-3 capitalize text-muted-strong">{failedChannel}</td>
                     <td className="px-4 py-3 text-danger">
                       {detail?.error_message ?? "Unknown error"}
                       {detail?.error_code ? ` (${detail.error_code})` : ""}
                     </td>
-                    <td className="px-4 py-3">
-                      <SendInviteButton label="Retry" action={sendInvite.bind(null, eventId, guest.id)} />
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <SendInviteButton
+                          label="Retry"
+                          action={sendInvite.bind(null, eventId, guest.id, failedChannel)}
+                        />
+                        <SendInviteButton
+                          label={otherChannel === "whatsapp" ? "Try WhatsApp" : "Try SMS"}
+                          action={sendInvite.bind(null, eventId, guest.id, otherChannel)}
+                        />
+                      </div>
                     </td>
                   </tr>
                 );
