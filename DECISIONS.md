@@ -201,3 +201,13 @@ Added alongside it: `setUserPassword`, a new action letting the admin reset *any
 **`npm install` surfaced 8 pre-existing vulnerabilities (7 high, 1 critical)** in unrelated packages already in the tree — `next` itself (a critical RCE in `next/og ImageResponse`, GHSA-vcvr-r3jv-pc5j, among several others fixed in 16.4.0), `sharp`, `source-map-js`, and `braces` (via `eslint-config-next`, dev-only). None are new: `html5-qrcode` itself added exactly one package with no vulnerable transitive dependencies. Flagged to the user as a separate, pre-existing item — not fixed as part of this pass, since `next@16.4.0` is a version bump outside this change's scope and deserves its own look rather than a drive-by `npm audit fix --force`.
 
 **Deferred to v2, by the user's explicit choice:** offline support — queuing scans in local storage when the device has no connection and syncing once it does, which is the original brief's #1 non-negotiable. Every scan in this v1 is a live round-trip to `scan_check_in()`; a venue with unreliable connectivity (the stated norm for Tanzanian venues per the brief) will see scans simply fail to submit rather than queue. This is a known, accepted gap for v1, not an oversight.
+
+---
+
+## 2026-10-10 — 5.11 Scanner + customer attendee list
+
+**Request:** both a scanner and the event's customer should be able to see the full guest list with each person's current check-in status, not just scan codes one at a time — e.g. answering "has the Mwangi family arrived yet?" without scanning anyone.
+
+**Customer side:** no new backend needed. A customer already has full RLS access to their own event's `guests` rows (unchanged by this pass); `app/dashboard/events/[eventId]/guests/page.tsx` just wasn't selecting or displaying `checked_in_at`/`checked_in_gate`. Added a "Checked in" column (badge + timestamp + gate, same visual language as the RSVP/delivery columns already there).
+
+**Scanner side:** needed a new function — a `scanner` profile still has no direct RLS access to `guests` (decision 5.8's least-privilege stance, upheld again in 5.10's `scan_check_in()`), so a plain `.from("guests").select()` was never an option. `scan_list_guests(p_event_id)` (`0009_scan_guest_list.sql`) is the same shape again: security-definer, same authorization as `scan_check_in()` (`is_admin()` or a `'scanner'` row on this event, raising on anything else), returning only check-in-relevant fields — no phone, email, notes, or dietary info, same omissions as `get_invite`. `/scan/[eventId]/guests` renders it with a client-side search box (name/category/table) and a "N / total checked in" count; cross-linked with the scan screen itself ("Guest list" / "Scan" buttons each way).

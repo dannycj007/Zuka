@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireEvent } from "@/lib/require-event";
+import { formatTanzaniaDateTime } from "@/lib/tanzania-time";
 import { deleteGuest } from "./actions";
 import { sendInvite, sendAllPending } from "./delivery-actions";
 import { DeleteGuestButton } from "./delete-guest-button";
@@ -36,7 +37,7 @@ export default async function GuestsPage({
   const { data: guests } = await supabase
     .from("guests")
     .select(
-      "id, full_name, phone_e164, category, table_label, seats_allotted, rsvp_status, invite_token, latest_delivery_status",
+      "id, full_name, phone_e164, category, table_label, seats_allotted, rsvp_status, invite_token, latest_delivery_status, checked_in_at, checked_in_gate",
     )
     .eq("event_id", eventId)
     .order("full_name", { ascending: true });
@@ -73,7 +74,7 @@ export default async function GuestsPage({
           </div>
 
           <Card className="mt-4 overflow-x-auto p-0">
-            <table className="w-full min-w-[720px] text-left text-sm">
+            <table className="w-full min-w-[880px] text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-muted">
                   <th className="px-4 py-3 font-medium">Name</th>
@@ -82,6 +83,7 @@ export default async function GuestsPage({
                   <th className="px-4 py-3 font-medium">Table</th>
                   <th className="px-4 py-3 font-medium">RSVP</th>
                   <th className="px-4 py-3 font-medium">Delivery</th>
+                  <th className="px-4 py-3 font-medium">Checked in</th>
                   <th className="px-4 py-3 font-medium" />
                 </tr>
               </thead>
@@ -106,6 +108,19 @@ export default async function GuestsPage({
                         </Badge>
                       ) : (
                         <span className="text-xs text-muted">Not sent</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {guest.checked_in_at ? (
+                        <div>
+                          <Badge variant="success">Checked in</Badge>
+                          <p className="mt-1 text-xs text-muted">
+                            {formatTanzaniaDateTime(guest.checked_in_at)}
+                            {guest.checked_in_gate ? ` · ${guest.checked_in_gate}` : ""}
+                          </p>
+                        </div>
+                      ) : (
+                        <Badge variant="default">Not yet</Badge>
                       )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">

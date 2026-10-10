@@ -3,6 +3,7 @@ import { getProfile } from "@/lib/profile";
 import { requireScanEventAccess } from "@/lib/scan";
 import { ScanClient } from "./scan-client";
 import { PageHeader } from "@/components/ui/page-header";
+import { LinkButton } from "@/components/ui/button";
 
 export default async function ScanEventPage({
   params,
@@ -20,7 +21,15 @@ export default async function ScanEventPage({
 
   return (
     <div>
-      <PageHeader title={event.name} description={event.venue_name ?? undefined} />
+      <PageHeader
+        title={event.name}
+        description={event.venue_name ?? undefined}
+        actions={
+          <LinkButton href={`/scan/${eventId}/guests`} variant="secondary" size="sm">
+            Guest list
+          </LinkButton>
+        }
+      />
       <div className="mt-6">
         <ScanClient eventId={eventId} />
       </div>

@@ -169,8 +169,14 @@ flow from then on.
 scanner's assigned events; `/scan/[eventId]` is the actual check-in
 screen — camera QR scan (via `html5-qrcode`) with a manual
 paste/type-the-code fallback, calling `scan_check_in()`
-(`0008_scan_checkin.sql`) for each scan. See decision 5.10 in
-`DECISIONS.md` for the full authorization model and why this is
+(`0008_scan_checkin.sql`) for each scan. `/scan/[eventId]/guests` is a
+read-only attendee list with search and a live "N / total checked in"
+count, backed by `scan_list_guests()` (`0009_scan_guest_list.sql`) — a
+scanner still never gets a guest's phone number, email, or notes, only
+check-in-relevant fields. The customer's own guest list
+(`/dashboard/events/[eventId]/guests`) shows the same check-in status
+too, via their existing full RLS access. See decisions 5.10/5.11 in
+`DECISIONS.md` for the full authorization model and why scanning is
 online-only for now (every scan is a live request; there's no local
 queue yet — see "Not built yet" below).
 

@@ -402,6 +402,20 @@ export type Database = {
           checked_in_at: string | null;
         }[];
       };
+      scan_list_guests: {
+        Args: { p_event_id: string };
+        Returns: {
+          guest_id: string;
+          full_name: string;
+          salutation: string | null;
+          category: string | null;
+          table_label: string | null;
+          seats_allotted: number;
+          rsvp_status: RsvpStatus;
+          checked_in_at: string | null;
+          checked_in_gate: string | null;
+        }[];
+      };
     };
   };
 };
