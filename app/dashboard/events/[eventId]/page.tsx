@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireEvent } from "@/lib/require-event";
+import { getProfile } from "@/lib/profile";
 import { formatTanzaniaDateTime } from "@/lib/tanzania-time";
 import { PageHeader } from "@/components/ui/page-header";
 import { LinkButton } from "@/components/ui/button";
@@ -23,6 +24,22 @@ export default async function EventPage({
     .from("guests")
     .select("id", { count: "exact", head: true })
     .eq("event_id", eventId);
+
+  // Only shown if this customer has also been granted the 'scanner' row
+  // on this event (decision 5.8's "no door staff hired" case) — most
+  // customers won't have one, and that's the common case, not an error.
+  const result = await getProfile(supabase);
+  let canScan = false;
+  if (result) {
+    const { data: scannerAssignment } = await supabase
+      .from("event_assignments")
+      .select("id")
+      .eq("event_id", eventId)
+      .eq("user_id", result.user.id)
+      .eq("role", "scanner")
+      .maybeSingle();
+    canScan = Boolean(scannerAssignment);
+  }
 
   return (
     <div>
@@ -73,6 +90,11 @@ export default async function EventPage({
         <LinkButton href={`/dashboard/events/${eventId}/deliveries`} variant="secondary">
           Delivery status
         </LinkButton>
+        {canScan && (
+          <LinkButton href={`/scan/${eventId}`} variant="secondary">
+            Scan
+          </LinkButton>
+        )}
       </div>
     </div>
   );

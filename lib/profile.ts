@@ -63,3 +63,41 @@ export async function requireAnyRole(
   }
   return result;
 }
+
+/**
+ * Gates /scan. A plain requireRole(supabase, "scanner") would be too
+ * narrow: decision 5.8's "customer does their own door, no scanner
+ * hired" case is a customer account (profile.role === "customer") that
+ * holds a second, admin-granted 'scanner' row in event_assignments on
+ * their own event — their account role never changes. So this also
+ * admits a customer who holds at least one such row, alongside
+ * dedicated 'scanner' profiles and admin (who passes every
+ * scan_check_in() authorization check unconditionally and should be
+ * able to reach the area to test/help out).
+ */
+export async function requireScanAccess(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+) {
+  const result = await getProfile(supabase);
+  if (!result) {
+    redirect("/login");
+  }
+  const { user, profile } = result;
+
+  if (profile.role === "admin" || profile.role === "scanner") {
+    return result;
+  }
+
+  const { data } = await supabase
+    .from("event_assignments")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("role", "scanner")
+    .limit(1);
+
+  if (!data || data.length === 0) {
+    redirect(ROLE_HOME_PATH[profile.role]);
+  }
+
+  return result;
+}

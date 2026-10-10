@@ -328,7 +328,10 @@ export type Database = {
       check_ins: {
         Row: {
           id: string;
-          guest_id: string;
+          // Nullable since 0008_scan_checkin.sql: an 'invalid' scan (a
+          // token matching no guest at all) still needs to be logged, but
+          // has no guest row to reference.
+          guest_id: string | null;
           event_id: string;
           scanned_at: string;
           scanned_by_user_id: string | null;
@@ -342,7 +345,7 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          guest_id: string;
+          guest_id?: string | null;
           event_id: string;
           scanned_at?: string;
           scanned_by_user_id?: string | null;
@@ -385,6 +388,19 @@ export type Database = {
       submit_rsvp: {
         Args: { p_token: string; p_status: string };
         Returns: undefined;
+      };
+      scan_check_in: {
+        Args: { p_event_id: string; p_token: string; p_gate_label: string | null };
+        Returns: {
+          result: CheckInResult;
+          guest_id: string | null;
+          full_name: string | null;
+          salutation: string | null;
+          category: string | null;
+          table_label: string | null;
+          seats_allotted: number | null;
+          checked_in_at: string | null;
+        }[];
       };
     };
   };

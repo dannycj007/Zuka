@@ -165,13 +165,28 @@ inviting a user itself requires an existing admin session:
 Every other account — admin or otherwise — goes through the in-app invite
 flow from then on.
 
-**Not built yet**: the actual QR-scanning camera UI. `/scan` currently
-lists a scanner's assigned events with a placeholder — Phase 5
-(check-in/scanning) only ever had its schema built (`scanner_codes`,
-`scanner_sessions`, `check_ins`), never the UI. The existing per-event
-PIN/join-code system (decision 5.7, unchanged by this rearchitecture) is
-still how one-night hired door staff scan today, with no account needed
-at all.
+**Scanning (Phase 5, v1 — online-only)**: `/scan` lists a signed-in
+scanner's assigned events; `/scan/[eventId]` is the actual check-in
+screen — camera QR scan (via `html5-qrcode`) with a manual
+paste/type-the-code fallback, calling `scan_check_in()`
+(`0008_scan_checkin.sql`) for each scan. See decision 5.10 in
+`DECISIONS.md` for the full authorization model and why this is
+online-only for now (every scan is a live request; there's no local
+queue yet — see "Not built yet" below).
+
+Reachable three ways: the Users → "Set password" page covers getting a
+scanner account logged in without email (decision 5.9); from an admin's
+event page (always, a "Scan" button); from a customer's own event page
+(only if the admin granted them a `scanner` row on it, decision 5.8's
+"no door staff hired" case).
+
+**Not built yet**: offline support (queuing scans locally and syncing
+when back online — the brief's #1 non-negotiable, deliberately deferred
+to v2, see decision 5.10) and the per-event PIN/join-code system's own
+check-in path (decision 5.7's schema — `scanner_codes`,
+`scanner_sessions` — still exists, but, like the rest of Phase 5 before
+this pass, never had a UI or write path built for it; door staff without
+a pre-provisioned account still have no way to scan today).
 
 ## Seed script
 

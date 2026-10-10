@@ -69,6 +69,9 @@ export default async function AdminEventDetailPage({
         <LinkButton href={`/dashboard/events/${eventId}/deliveries`} variant="secondary">
           Delivery status
         </LinkButton>
+        <LinkButton href={`/scan/${eventId}`} variant="secondary">
+          Scan
+        </LinkButton>
       </div>
 
       <h2 className="mt-10 font-display text-lg font-semibold">People with access</h2>

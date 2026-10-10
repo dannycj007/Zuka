@@ -1,17 +1,24 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { requireRole } from "@/lib/profile";
+import { requireScanAccess } from "@/lib/profile";
 import { Logo } from "@/components/ui/logo";
+import { NavArrows } from "@/components/ui/nav-arrows";
 import { logout } from "@/app/dashboard/actions";
 
 export default async function ScanLayout({ children }: LayoutProps<"/scan">) {
   const supabase = await createClient();
-  await requireRole(supabase, "scanner");
+  await requireScanAccess(supabase);
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <header className="border-b border-border bg-surface/80 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
         <div className="mx-auto flex w-full max-w-md items-center justify-between px-4 py-3">
-          <Logo size={28} />
+          <div className="flex items-center gap-3">
+            <NavArrows />
+            <Link href="/scan">
+              <Logo size={28} />
+            </Link>
+          </div>
           <form action={logout}>
             <button
               type="submit"
