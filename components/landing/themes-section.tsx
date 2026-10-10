@@ -10,10 +10,8 @@ import { Reveal } from "@/components/ui/reveal";
  * here would need its own RLS change for what's otherwise just display
  * copy. If the real theme palette ever changes, update both places.
  *
- * 50 Tsh/card for every template (confirmed with the user, 2026-10-10 —
- * see DECISIONS.md 5.13) — a flat rate despite each theme technically
- * having its own price field, which is why every card shows the same
- * number rather than this being a shortcut.
+ * Per-card pricing lives in the dedicated Pricing section (#pricing)
+ * below, not repeated on these cards — see DECISIONS.md 5.13.
  */
 const THEMES = [
   {
@@ -53,8 +51,6 @@ const THEMES = [
   },
 ];
 
-const CARD_PRICE_TSH = 50;
-
 export function ThemesSection() {
   return (
     <section id="themes" className="border-y border-border bg-surface/40">
@@ -67,8 +63,7 @@ export function ThemesSection() {
             A card template for every celebration
           </h2>
           <p className="mt-3 text-base text-muted">
-            Every template is {CARD_PRICE_TSH} Tsh per card — pick the one
-            that fits your event, then pay only for the guests you invite.
+            Pick the one that fits your event — see pricing below.
           </p>
         </Reveal>
 
@@ -88,14 +83,9 @@ export function ThemesSection() {
                   </span>
                 </div>
                 <div className="p-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-display text-sm font-semibold text-foreground">
-                      {theme.name}
-                    </h3>
-                    <span className="text-xs font-medium text-brand-orange-light">
-                      {CARD_PRICE_TSH} Tsh/card
-                    </span>
-                  </div>
+                  <h3 className="font-display text-sm font-semibold text-foreground">
+                    {theme.name}
+                  </h3>
                   <p className="mt-1.5 text-xs text-muted">{theme.description}</p>
                 </div>
               </div>
