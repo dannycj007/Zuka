@@ -1,21 +1,22 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requireAnyRole } from "@/lib/profile";
 import { Logo } from "@/components/ui/logo";
 import { NavArrows } from "@/components/ui/nav-arrows";
 import { logout } from "./actions";
 
+/**
+ * Customer AND admin both use this route tree — admin needs the same
+ * guest list / CSV import / delivery status pages a customer uses, to
+ * help set an event up, rather than a duplicate copy under /admin (see
+ * lib/profile.ts's requireAnyRole doc comment). A scanner-role account
+ * has no business here at all.
+ */
 export default async function DashboardLayout({
   children,
 }: LayoutProps<"/dashboard">) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  await requireAnyRole(supabase, ["customer", "admin"]);
 
   return (
     <div className="flex min-h-full flex-1 flex-col">

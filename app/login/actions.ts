@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { ROLE_HOME_PATH } from "@/lib/profile";
 
 export type LoginState = {
   error?: string;
@@ -19,7 +20,7 @@ export async function login(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
@@ -28,5 +29,11 @@ export async function login(
     return { error: error.message };
   }
 
-  redirect("/dashboard");
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", data.user.id)
+    .maybeSingle();
+
+  redirect(profile ? ROLE_HOME_PATH[profile.role] : "/dashboard");
 }

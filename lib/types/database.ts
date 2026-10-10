@@ -15,6 +15,8 @@
 export type RsvpStatus = "pending" | "yes" | "no" | "maybe";
 export type EventStatus = "draft" | "live" | "closed";
 export type EventLanguage = "en" | "sw";
+export type ProfileRole = "admin" | "customer" | "scanner";
+export type EventAssignmentRole = "customer" | "scanner";
 export type DeliveryChannel = "whatsapp" | "sms";
 export type DeliveryStatus = "queued" | "sent" | "delivered" | "read" | "failed";
 // "nextsms" is historical only (see DECISIONS.md, 2026-10-10 provider
@@ -30,19 +32,67 @@ export type Database = {
         Row: {
           id: string;
           name: string;
-          owner_user_id: string;
+          created_by: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           name: string;
-          owner_user_id: string;
+          created_by?: string | null;
           created_at?: string;
         };
         Update: Partial<{
           id: string;
           name: string;
-          owner_user_id: string;
+          created_by: string | null;
+          created_at: string;
+        }>;
+        Relationships: [];
+      };
+      profiles: {
+        Row: {
+          id: string;
+          role: ProfileRole;
+          full_name: string | null;
+          email: string;
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          role: ProfileRole;
+          full_name?: string | null;
+          email: string;
+          created_at?: string;
+        };
+        Update: Partial<{
+          id: string;
+          role: ProfileRole;
+          full_name: string | null;
+          email: string;
+          created_at: string;
+        }>;
+        Relationships: [];
+      };
+      event_assignments: {
+        Row: {
+          id: string;
+          event_id: string;
+          user_id: string;
+          role: EventAssignmentRole;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          user_id: string;
+          role: EventAssignmentRole;
+          created_at?: string;
+        };
+        Update: Partial<{
+          id: string;
+          event_id: string;
+          user_id: string;
+          role: EventAssignmentRole;
           created_at: string;
         }>;
         Relationships: [];

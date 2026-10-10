@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState } from "react";
-import Link from "next/link";
 import { login, type LoginState } from "./actions";
 import { Logo } from "@/components/ui/logo";
 import { Card } from "@/components/ui/card";
@@ -24,7 +23,7 @@ export default function LoginPage() {
             Log in
           </h1>
           <p className="mt-1 text-sm text-muted">
-            Manage your events and guest lists.
+            Sign in to your ZukaEvents account.
           </p>
 
           <form action={formAction} className="mt-8 space-y-4">
@@ -69,10 +68,8 @@ export default function LoginPage() {
         </Card>
 
         <p className="mt-6 text-center text-sm text-muted">
-          No account yet?{" "}
-          <Link href="/signup" className="font-medium text-brand-orange-light hover:underline">
-            Sign up
-          </Link>
+          Accounts are set up by invite only — contact your event admin if
+          you need access.
         </p>
       </div>
     </main>

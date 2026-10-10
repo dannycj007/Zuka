@@ -3,7 +3,7 @@ import { NewEventForm } from "./new-event-form";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 
-export default async function NewEventPage() {
+export default async function AdminNewEventPage() {
   const supabase = await createClient();
   const { data: themes } = await supabase
     .from("themes")

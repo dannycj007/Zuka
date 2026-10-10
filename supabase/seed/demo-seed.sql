@@ -1,17 +1,22 @@
 -- Demo seed, SQL Editor version.
 --
--- Does the same thing as `npm run seed:demo -- <email>`: finds (or creates)
--- the organisation owned by the given signed-up user, ensures a placeholder
--- "Classic" theme exists, then creates one demo wedding event with 20
--- Tanzanian guests attached to that organisation.
+-- Does the same thing as `npm run seed:demo -- <email>`: ensures a
+-- 'customer' profile and a demo organisation exist for the given user,
+-- ensures a placeholder "Classic" theme exists, then creates one demo
+-- wedding event with 20 Tanzanian guests, assigning that user as the
+-- event's customer (see DECISIONS.md, 2026-10-10 — there's no
+-- self-service signup or org ownership anymore; access flows through
+-- event_assignments).
 --
 -- Exists because scripts/seed-demo.mjs needs outbound network access to
 -- your Supabase project, which isn't available from every environment this
 -- gets run from. Safe to run more than once — reruns reuse the existing
 -- org/theme but do add a new event + guest set each time.
 --
--- Edit the email on the next line, then run this whole file in the
--- Supabase SQL Editor.
+-- Edit the email on the next line to a user that already exists in
+-- auth.users (Supabase dashboard -> Authentication -> Users -> Add
+-- user, or an admin-sent invite already accepted), then run this whole
+-- file in the Supabase SQL Editor.
 
 do $$
 declare
@@ -23,12 +28,16 @@ declare
 begin
   select id into v_owner_id from auth.users where email = v_owner_email;
   if v_owner_id is null then
-    raise exception 'No signed-up user found with email %. Sign up in the app first, then re-run this.', v_owner_email;
+    raise exception 'No user found with email %. Add them in the Supabase dashboard (Authentication > Users) or have an admin invite them first, then re-run this.', v_owner_email;
   end if;
 
-  select id into v_org_id from organisations where owner_user_id = v_owner_id limit 1;
+  if not exists (select 1 from profiles where id = v_owner_id) then
+    insert into profiles (id, email, role) values (v_owner_id, v_owner_email, 'customer');
+  end if;
+
+  select id into v_org_id from organisations where name = 'Demo Organisation' limit 1;
   if v_org_id is null then
-    insert into organisations (name, owner_user_id)
+    insert into organisations (name, created_by)
     values ('Demo Organisation', v_owner_id)
     returning id into v_org_id;
   end if;
@@ -52,6 +61,9 @@ begin
     v_theme_id, 'sw', 'draft'
   )
   returning id into v_event_id;
+
+  insert into event_assignments (event_id, user_id, role)
+  values (v_event_id, v_owner_id, 'customer');
 
   -- Phone numbers: +255 + a real Tanzanian mobile network prefix (Tigo
   -- 754/755/756, Airtel 786/787, Vodacom 715, Halotel 658, Airtel 683,

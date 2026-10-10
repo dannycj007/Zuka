@@ -5,7 +5,11 @@ market. Full product brief and phase plan live in the project's founding
 conversation; every `>>> DECISION` checkpoint answered so far is recorded in
 [`DECISIONS.md`](./DECISIONS.md) — treat that file as project memory.
 
-**Status:** Phases 1-3 complete. Phase 4 (Delivery and tracking) in progress.
+**Status:** Phases 1-4 complete (SMS via HudumaSMS confirmed working
+end-to-end; WhatsApp built, pending Meta Business Verification). Access
+control rearchitected 2026-10-10 into admin/customer/scanner roles — see
+"Access control & roles" below. Phase 5 (QR check-in scanning UI) not yet
+built.
 
 ## Stack
 
@@ -30,12 +34,14 @@ cp .env.example .env   # fill in the values below
 ```
 
 Then, once you have a Supabase project (see below), apply the migrations in
-`supabase/migrations/` in order via the Supabase CLI or SQL editor, sign up
-in the running app, and run the seed script:
+`supabase/migrations/` in order via the Supabase CLI or SQL editor. There's
+no self-service signup (see "Access control & roles" below) — add yourself
+as a user directly in the Supabase dashboard (Authentication → Users → Add
+user, with a password so you can log in immediately), then run the seed
+script, which creates a 'customer' profile and demo event for that email:
 
 ```bash
 npm run dev
-# sign up at http://localhost:3000/signup, create your organisation
 npm run seed:demo -- you@example.com
 ```
 
@@ -85,6 +91,14 @@ Schema and RLS policies live in `supabase/migrations/`, applied in order:
   `delivery_events.provider`'s allowed values (decision 5.1's 2026-10-10
   provider swap). Every project needs this one, fresh or not — sending
   itself needs no migration beyond it, just `HUDUMASMS_API_KEY`.
+- `0007_roles_and_access.sql` — the admin/customer/scanner access-control
+  rearchitecture (decision 5.8). Adds `profiles` and `event_assignments`,
+  repurposes `organisations` from an access boundary into an admin-managed
+  client directory, and rewrites RLS so access to an event comes from an
+  `event_assignments` row instead of org ownership. **Every project needs
+  this one too** — see "Access control & roles" below, including how to
+  create your first admin account (nothing in the UI can do it; this one
+  bootstrap step is a direct SQL Editor insert).
 
 `lib/types/database.ts` is a **hand-written** TypeScript type matching
 these migrations, used to type the Supabase clients until a real project
@@ -96,6 +110,57 @@ supabase gen types typescript --db-url "$SUPABASE_DB_URL" > lib/types/database.t
 ```
 
 and replace this hand-written version — don't hand-maintain both.
+
+## Access control & roles
+
+No self-service signup (decision 5.8, 2026-10-10 — see `DECISIONS.md`).
+Every account is one of three roles, set in `profiles.role`:
+
+| Role | Home page | Can do |
+|---|---|---|
+| `admin` | `/admin` | Create every event, invite users, assign customers/scanners to events. Also has full access to `/dashboard`'s guest list, CSV import, and delivery status pages for any event, to help a customer set things up. |
+| `customer` | `/dashboard` | Manage their own assigned event(s): guest list, CSV import, invite sending, delivery status, edit event details. Cannot create or delete events. |
+| `scanner` | `/scan` | Scan check-ins at their assigned event(s) only. No access to guest phone numbers/notes or anything else — least privilege by design (see the RLS note below). |
+
+Access to a specific event comes from an `event_assignments` row
+(`event_id`, `user_id`, `role`), not from owning anything. A customer
+granted their own scan access on an event they organise (the "no scanner
+hired" case) just has two assignment rows — `customer` and `scanner` — on
+the same event; it's not a different kind of account.
+
+**Creating accounts**: admin-only, via Users → Invite in `/admin`. This
+sends a real Supabase invite email (`supabase.auth.admin.inviteUserByEmail`)
+— accepting it (clicking the link, then setting a password at
+`/auth/set-password`) *is* the email-verification step, so there's nothing
+else to configure for that.
+
+**Bootstrapping your first admin** — nothing in the UI can do this, since
+inviting a user itself requires an existing admin session:
+
+1. Supabase dashboard → Authentication → Users → Add user. Give them a
+   password directly so they can log in immediately (or use "Send
+   invite" — either works, since `profiles` is what actually grants the
+   admin role, not how the auth user was created).
+2. In the SQL Editor, run (replace both values):
+   ```sql
+   insert into profiles (id, email, role)
+   values (
+     (select id from auth.users where email = 'you@example.com'),
+     'you@example.com',
+     'admin'
+   );
+   ```
+
+Every other account — admin or otherwise — goes through the in-app invite
+flow from then on.
+
+**Not built yet**: the actual QR-scanning camera UI. `/scan` currently
+lists a scanner's assigned events with a placeholder — Phase 5
+(check-in/scanning) only ever had its schema built (`scanner_codes`,
+`scanner_sessions`, `check_ins`), never the UI. The existing per-event
+PIN/join-code system (decision 5.7, unchanged by this rearchitecture) is
+still how one-night hired door staff scan today, with no account needed
+at all.
 
 ## Seed script
 

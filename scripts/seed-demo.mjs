@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 // Seeds a demo event with 20 fake Tanzanian guests for Phase 1's
-// "done when" check: sign up in the app, run this script, see the demo
-// event on your dashboard.
+// "done when" check: add yourself as a user (Supabase dashboard ->
+// Authentication -> Users -> Add user, or have an admin invite you
+// through the app), run this script, see the demo event on your
+// dashboard. No self-service signup exists anymore (see DECISIONS.md,
+// 2026-10-10) — this script creates a 'customer' profile for you if you
+// don't already have one.
 //
 // Usage: npm run seed:demo -- you@example.com
 //   (or set SEED_ORG_OWNER_EMAIL in .env instead of passing an argument)
@@ -112,16 +116,36 @@ async function main() {
   const owner = await findUserByEmail(ownerEmail);
   console.log(`Seeding demo data for ${owner.email} (${owner.id})`);
 
+  // No self-service signup anymore (see DECISIONS.md, 2026-10-10) — a
+  // profiles row only exists if this user was invited through the admin
+  // UI. This script can still run against a user added directly via the
+  // Supabase dashboard (Authentication > Users > Add user), so it
+  // creates a 'customer' profile here if one isn't already there rather
+  // than requiring the full invite flow just to seed demo data.
+  const { data: existingProfile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", owner.id)
+    .maybeSingle();
+
+  if (!existingProfile) {
+    const { error } = await supabase
+      .from("profiles")
+      .insert({ id: owner.id, email: owner.email, role: "customer" });
+    if (error) throw error;
+    console.log(`Created a 'customer' profile for ${owner.email}`);
+  }
+
   let { data: org } = await supabase
     .from("organisations")
     .select("id, name")
-    .eq("owner_user_id", owner.id)
+    .eq("name", "Demo Organisation")
     .maybeSingle();
 
   if (!org) {
     const { data: newOrg, error } = await supabase
       .from("organisations")
-      .insert({ name: "Demo Organisation", owner_user_id: owner.id })
+      .insert({ name: "Demo Organisation", created_by: owner.id })
       .select("id, name")
       .single();
     if (error) throw error;
@@ -171,6 +195,12 @@ async function main() {
 
   if (eventError) throw eventError;
   console.log(`Created event "${event.name}" (${event.id})`);
+
+  const { error: assignmentError } = await supabase
+    .from("event_assignments")
+    .insert({ event_id: event.id, user_id: owner.id, role: "customer" });
+  if (assignmentError) throw assignmentError;
+  console.log(`Assigned ${owner.email} as customer on this event.`);
 
   const guestRows = GUESTS.map((guest, index) => ({
     event_id: event.id,
