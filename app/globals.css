@@ -134,6 +134,67 @@ body {
   }
 }
 
+/* Landing page motion (app/page.tsx + components/landing/*). Pure CSS —
+   no animation library. `.reveal` pairs with components/ui/reveal.tsx,
+   which toggles `.is-visible` via IntersectionObserver; `.animate-in`
+   is for above-the-fold content that should animate in immediately on
+   load instead of waiting for a scroll trigger. Respects
+   prefers-reduced-motion by disabling all of it outright. */
+
+@keyframes blob-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(24px, -32px) scale(1.08); }
+  66% { transform: translate(-18px, 18px) scale(0.96); }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+
+@keyframes float-slower {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(12px); }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-blob { animation: blob-drift 14s ease-in-out infinite; }
+.animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
+.animate-float-slower { animation: float-slower 7s ease-in-out infinite 0.5s; }
+
+.animate-in {
+  animation: fade-in-up 0.7s ease both;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-blob,
+  .animate-float-slow,
+  .animate-float-slower,
+  .animate-in {
+    animation: none;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
 /* Faint repeating geometric motif, echoing the pattern behind the logo's
    Z. Kept subtle (low opacity) so it reads as texture, not noise. */
 .pattern-bg {
