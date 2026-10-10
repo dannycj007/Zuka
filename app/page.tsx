@@ -5,8 +5,10 @@ import { LandingNav } from "@/components/landing/nav";
 import { Hero } from "@/components/landing/hero";
 import { FeatureStrip } from "@/components/landing/feature-strip";
 import { SystemFeatures } from "@/components/landing/system-features";
+import { ThemesSection } from "@/components/landing/themes-section";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { TanzaniaSection } from "@/components/landing/tanzania-section";
+import { PricingSection } from "@/components/landing/pricing-section";
 import { FinalCta } from "@/components/landing/final-cta";
 import { Footer } from "@/components/landing/footer";
 
@@ -24,8 +26,10 @@ export default async function Home() {
       <Hero />
       <FeatureStrip />
       <SystemFeatures />
+      <ThemesSection />
       <HowItWorks />
       <TanzaniaSection />
+      <PricingSection />
       <FinalCta />
       <Footer />
     </main>

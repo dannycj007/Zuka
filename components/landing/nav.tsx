@@ -4,8 +4,9 @@ import { LinkButton } from "@/components/ui/button";
 
 const LINKS = [
   { href: "#features", label: "Features" },
+  { href: "#themes", label: "Themes" },
   { href: "#how-it-works", label: "How it works" },
-  { href: "#tanzania", label: "Built for Tanzania" },
+  { href: "#pricing", label: "Pricing" },
 ];
 
 export function LandingNav() {
