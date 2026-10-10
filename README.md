@@ -117,8 +117,11 @@ than deduplicating.
 
 ## Delivery (Phase 4)
 
-**Live status as of 2026-10-10**: working. The first real SMS in this
-project's history sent successfully on day one of switching to
+**Live status as of 2026-10-10**: confirmed working end-to-end, both via
+a direct API test and through the deployed app itself — clicking
+"Retry" on a guest whose send had failed (back when `HUDUMASMS_API_KEY`
+wasn't yet set in Vercel) delivered a real SMS once the key was added.
+First real SMS in this project's history, on day one of switching to
 HudumaSMS — `ZUKAEVENTS` was `Active` as a sender immediately, no
 approval wait. (NextSMS, the original provider, is gone — see decision
 5.1's 2026-10-10 entry in `DECISIONS.md` for why.)
