@@ -3,14 +3,14 @@ import { Reveal } from "@/components/ui/reveal";
 import { MailIcon, SendIcon, ChatIcon } from "./icons";
 
 /**
- * Real, confirmed rates (2026-10-10 — see DECISIONS.md 5.13), not
- * placeholder numbers: 50 Tsh/card flat across every theme, SMS 100
+ * Real, confirmed rates (2026-10-10 — see DECISIONS.md 5.13/5.14), not
+ * placeholder numbers: 1500 Tsh/card flat across every theme, SMS 100
  * Tsh/message, WhatsApp 1000 Tsh/message. Pay-as-you-go, no
  * subscription — there's no billing/checkout system built, so this is
  * informational pricing copy, same as the rest of the landing page;
  * every CTA still routes to /login, not a payment flow.
  */
-const CARD_PRICE_TSH = 50;
+const CARD_PRICE_TSH = 1500;
 const SMS_PRICE_TSH = 100;
 const WHATSAPP_PRICE_TSH = 1000;
 
