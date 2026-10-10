@@ -9,11 +9,9 @@ import { NextResponse, type NextRequest } from "next/server";
  * "Configure Webhooks" step and click "Verify and save", Meta sends
  *   GET ?hub.mode=subscribe&hub.challenge=<random>&hub.verify_token=<your token>
  * and expects the raw hub.challenge value echoed back with a 200 if
- * hub.verify_token matches. Unlike NextSMS's webhook (still a 501 stub —
- * their delivery-callback docs aren't accessible from here), this one
- * is real: the handshake protocol is standard across Meta's platform
- * and independently confirmed via multiple sources, not a single
- * unverified blog post.
+ * hub.verify_token matches. This handshake protocol is standard across
+ * Meta's platform and independently confirmed via multiple sources
+ * rather than a single unverified blog post.
  *
  * POST (actual delivery/read status + inbound message events) is
  * intentionally still a stub. It returns 200 immediately — Meta expects

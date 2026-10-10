@@ -6,7 +6,7 @@
 
 export type SendMessageInput = {
   to: string;
-  /** Full message body. Used as-is by NextSmsProvider (free-form SMS).
+  /** Full message body. Used as-is by HudumaSmsProvider (free-form SMS).
    * Ignored by WhatsAppProvider, which must send a pre-approved template
    * instead (Meta only allows free-form text within a 24h customer
    * service window, which doesn't apply to an organiser-initiated
@@ -27,7 +27,7 @@ export type SendMessageResult =
   | { ok: false; errorCode: string | null; errorMessage: string };
 
 export type DeliveryChannelName = "sms" | "whatsapp";
-export type DeliveryProviderName = "nextsms" | "whatsapp";
+export type DeliveryProviderName = "hudumasms" | "whatsapp";
 
 export interface DeliveryProvider {
   readonly channel: DeliveryChannelName;

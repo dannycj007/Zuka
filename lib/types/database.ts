@@ -17,7 +17,10 @@ export type EventStatus = "draft" | "live" | "closed";
 export type EventLanguage = "en" | "sw";
 export type DeliveryChannel = "whatsapp" | "sms";
 export type DeliveryStatus = "queued" | "sent" | "delivered" | "read" | "failed";
-export type DeliveryProvider = "nextsms" | "whatsapp";
+// "nextsms" is historical only (see DECISIONS.md, 2026-10-10 provider
+// swap) — kept here so old delivery_events rows still type-check; the
+// app never writes it anymore, only "hudumasms" going forward.
+export type DeliveryProvider = "nextsms" | "hudumasms" | "whatsapp";
 export type CheckInResult = "valid" | "duplicate" | "invalid" | "wrong_event";
 
 export type Database = {

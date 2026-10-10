@@ -12,14 +12,12 @@ conversation; every `>>> DECISION` checkpoint answered so far is recorded in
 - Next.js (App Router) + TypeScript, deployed on Vercel
 - Supabase — Postgres, Auth, Storage, Realtime, Row Level Security
 - Tailwind for styling
-- NextSMS for SMS (sender ID `ZUKA EVENTS` — the brief originally said
-  `ZUKA`, but that's not what's actually registered in the NextSMS
-  account; corrected 2026-09-23 after live testing), called directly and
-  synchronously from the Next.js server action — no job queue, no
-  third-party job-queue vendor (see "Delivery (Phase 4)" below and
-  decision 5.1's two 2026-09-23 revisions in `DECISIONS.md`)
+- HudumaSMS for SMS (sender ID `ZUKAEVENTS`; replaced NextSMS on
+  2026-10-10 — see decision 5.1's entry in `DECISIONS.md`), called
+  directly and synchronously from the Next.js server action — no job
+  queue, no third-party job-queue vendor (see "Delivery (Phase 4)" below)
 - WhatsApp via Meta's Cloud API directly (no BSP) — decision 5.2's
-  2026-09-29 addition, same synchronous-send shape as NextSMS (see
+  2026-09-29 addition, same synchronous-send shape as HudumaSMS (see
   "WhatsApp (Meta Cloud API)" below)
 - Google Sheets (one-way mirror, service account) — Phase 6
 - Sentry for error tracking — Phase 7
@@ -52,8 +50,7 @@ front-load all of them. What's marked "needed now" below is for Phase 1.
 | `SUPABASE_SERVICE_ROLE_KEY` | Same page, "service_role" secret — server-only, never expose client-side | **Yes** |
 | `SUPABASE_DB_URL` | Project Settings → Database → Connection string | **Yes**, to apply migrations |
 | Vercel project + env vars per environment | vercel.com → New Project, import this repo | Not yet — local dev is enough for Phase 1 |
-| NextSMS account, API key, sender ID `ZUKA EVENTS` | nextsms.co.tz dashboard → Customer Info → Customization → API Keys. As of 2026-09-23 this sender is registered but not yet approved (`Sender Names` tab shows `Status: No`) — the delivery layer handles that gracefully. The key goes into `NEXTSMS_API_KEY` in `.env`/Vercel, same as any other credential — see "Delivery (Phase 4)" below | **Yes**, for Phase 4 |
-| NextSMS delivery-report/webhook docs | Same dashboard, or your account rep — whatever page/PDF describes delivery callbacks | **Not blocking Phase 4**, but the webhook receiver (`app/api/webhooks/nextsms/route.ts`) stays a stub returning 501 until this exists — see "NextSMS webhooks" below |
+| HudumaSMS account, API key, sender ID `ZUKAEVENTS` | huduma.cloud dashboard → Developer → API Keys tab. Sender was `Active` immediately, no approval wait. The key goes into `HUDUMASMS_API_KEY` in `.env`/Vercel, same as any other credential — see "Delivery (Phase 4)" below | **Yes**, for Phase 4 |
 | Meta system-user access token, WhatsApp Phone Number ID, approved message template | business.facebook.com → your Business Manager. See "WhatsApp (Meta Cloud API)" below for the exact steps and template text | Optional — only if you want WhatsApp sending, added 2026-09-29 |
 | Google Cloud service account JSON + Sheets API enabled | console.cloud.google.com — share your sheet with the service account's email as Editor | Phase 6 |
 | Sentry DSN | sentry.io → new project | Phase 7 |
@@ -82,10 +79,12 @@ Schema and RLS policies live in `supabase/migrations/`, applied in order:
 - `0004_send_jobs_pg_cron.sql` / `0005_drop_send_jobs_pg_cron.sql` — an
   abandoned delivery architecture (`send_jobs` queue + `pg_cron`/`pg_net`)
   and its teardown; see "Delivery (Phase 4)" below. Skip `0004` entirely
-  on a fresh project — go straight from `0003` to whatever the current
-  delivery code needs, which as of this architecture is nothing further
-  (sending needs no migration, just `NEXTSMS_API_KEY`). Only apply `0005`
-  if `0004` was applied previously.
+  on a fresh project — go straight from `0003` to `0006`. Only apply
+  `0005` if `0004` was applied previously.
+- `0006_hudumasms_provider.sql` — adds `'hudumasms'` to
+  `delivery_events.provider`'s allowed values (decision 5.1's 2026-10-10
+  provider swap). Every project needs this one, fresh or not — sending
+  itself needs no migration beyond it, just `HUDUMASMS_API_KEY`.
 
 `lib/types/database.ts` is a **hand-written** TypeScript type matching
 these migrations, used to type the Supabase clients until a real project
@@ -118,71 +117,62 @@ than deduplicating.
 
 ## Delivery (Phase 4)
 
-**Live status as of 2026-09-23**: sending is implemented and unit tested,
-but no real SMS has been confirmed delivered yet — blocked on NextSMS
-approving the `ZUKA EVENTS` sender ID (their `Sender Names` dashboard tab
-shows `Status: No`, `Processed: No`). This is exactly the scenario the
-brief anticipated — every attempt against an unapproved sender fails
-cleanly with `403 Not Authorized`, logged with that reason and visible on
-the delivery status page, nothing crashes. Testing against an
-already-approved sender (e.g. `MICHANGO`, via `NEXTSMS_SENDER_ID`) is the
-way to confirm the pipeline works end-to-end before `ZUKA EVENTS` is
-approved.
+**Live status as of 2026-10-10**: working. The first real SMS in this
+project's history sent successfully on day one of switching to
+HudumaSMS — `ZUKAEVENTS` was `Active` as a sender immediately, no
+approval wait. (NextSMS, the original provider, is gone — see decision
+5.1's 2026-10-10 entry in `DECISIONS.md` for why.)
 
 No job queue and no third-party job-queue vendor (see decision 5.1's two
 2026-09-23 revisions in `DECISIONS.md` — first Inngest was dropped for
 Supabase `pg_cron`/`pg_net`, then that was dropped too, after live
 debugging showed real friction with `pg_net`'s async two-step
 dispatch/collect split and its SQL/plpgsql business logic having no unit
-test story). Sending is now a single direct, synchronous call:
+test story). Sending is a single direct, synchronous call:
 
 1. A "Send"/"Resend" button per guest, or "Send to all pending" on the
    guest list, builds the guest's personalized message and invite link in
    TypeScript (`lib/i18n.ts`'s `getInviteSmsText`), then calls
-   `NextSmsProvider.send()` (`lib/delivery/nextsms.ts`) directly from the
-   server action (`delivery-actions.ts`) and waits for the result.
-2. Whatever NextSMS returns — success or failure — is logged immediately
-   as one `delivery_events` row (`sent` or `failed`, with the provider's
-   message ID or error code/message). `delivery_events` is the only
-   source of truth; there's no separate queue table.
-3. A failed send (any reason — bad number, unapproved sender, network
-   error, NextSMS 5xx) is logged once and left for the organiser to retry
-   manually via the "Retry" button on the delivery status page. No
+   `HudumaSmsProvider.send()` (`lib/delivery/hudumasms.ts`) directly from
+   the server action (`delivery-actions.ts`) and waits for the result.
+2. Whatever HudumaSMS returns — success or failure — is logged
+   immediately as one `delivery_events` row (`sent` or `failed`, with the
+   provider's message ID or error code/message). `delivery_events` is the
+   only source of truth; there's no separate queue table.
+3. A failed send (any reason — bad number, insufficient credit, network
+   error, HudumaSMS 5xx) is logged once and left for the organiser to
+   retry manually via the "Retry" button on the delivery status page. No
    automatic retry.
 
-**Setup**: put your real NextSMS API key into `NEXTSMS_API_KEY` in `.env`
-(local) or your Vercel project's environment variables (deployed) — same
-as any other credential in this project, never committed to git. Set
-`NEXTSMS_SENDER_ID` only to override the default `ZUKA EVENTS` (e.g. for
-testing against an already-approved sender).
+**Setup**: put your real HudumaSMS API key into `HUDUMASMS_API_KEY` in
+`.env` (local) or your Vercel project's environment variables (deployed)
+— same as any other credential in this project, never committed to git.
+Set `HUDUMASMS_SENDER_NAME` only to override the default `ZUKAEVENTS`.
 
-If you previously applied `0004_send_jobs_pg_cron.sql` (an earlier
-architecture, now abandoned), apply
+If you previously applied `0004_send_jobs_pg_cron.sql` (an earlier,
+now-abandoned architecture), apply
 `supabase/migrations/0005_drop_send_jobs_pg_cron.sql` to tear down the
 `send_jobs` table, its two scheduled functions, and their `pg_cron`
-schedules. It leaves the `pg_net`/`pg_cron` extensions themselves enabled
-(unused, harmless) and leaves the `nextsms_api_key` Vault secret in place
-(also unused, harmless) rather than risk affecting anything else that
-might depend on them. A fresh project that never ran `0004` doesn't need
-`0005` either, but it's safe to run regardless (every statement is
-`if exists`/`if not exists`).
+schedules first. Every project (fresh or not) needs
+`0006_hudumasms_provider.sql`, which adds `'hudumasms'` to
+`delivery_events.provider`'s allowed values — it keeps `'nextsms'` in
+that list too, purely so historical rows from before this switch stay
+valid, even though the app never writes that value again.
 
-**Auth**: NextSMS uses Bearer token auth (`Authorization: Bearer <token>`,
-token from their dashboard under Customer Info → Customization → API
-Keys) — confirmed from their real API docs after their public "integrate
-in 5 minutes" blog post's `Authorization: Basic <key>` example turned out
-to be wrong (their actual Basic auth option needs base64-encoded
-`username:password`, not a bare key, per standard HTTP Basic auth).
+**Auth**: HudumaSMS uses an `X-API-Key: <key>` header (get it from their
+dashboard's Developer → API Keys tab). Every detail of their API —
+endpoint, auth header, request/response shapes — was confirmed directly
+from two live curl tests against the real account on 2026-10-10 (one
+success, one deliberate 401), not inferred from docs or a blog post. See
+the doc comment in `lib/delivery/hudumasms.ts` for the exact confirmed
+JSON shapes.
 
-**NextSMS webhooks aren't implemented.** Nothing available documents
-their delivery-report/webhook payload shape or signature scheme
-(`nextsms.co.tz` itself is blocked by this sandbox's network policy, and
-this wasn't in the API docs pages found so far), and the brief requires
-verified, idempotent webhook handling — faking that verification would be
-worse than not having the endpoint at all, so
-`app/api/webhooks/nextsms/route.ts` returns 501 until real docs are
-available. Without it, delivery status stops at `sent` — no `delivered`
-or `read` transitions.
+**HudumaSMS webhooks aren't implemented**, and may not need to be:
+their API exposes `GET /sms/:messageId` for polling a message's delivery
+status instead of push webhooks — this app doesn't call it yet (delivery
+status stops at `sent`, no `delivered`/`read` transitions), but that's a
+smaller addition than building webhook signature verification from
+scratch, whenever that's wanted.
 
 **Trade-off worth knowing:** a bulk "Send to all pending" on a large
 guest list sends one at a time, synchronously, inside a single server
@@ -194,7 +184,7 @@ problem (see DECISIONS.md's "5.1 revised again" entry).
 ## WhatsApp (Meta Cloud API)
 
 Decision 5.2 deferred WhatsApp to "a later, isolated addition" — this is
-that addition, added 2026-09-29. Same shape as NextSMS: `WhatsAppProvider`
+that addition, added 2026-09-29. Same shape as HudumaSMS: `WhatsAppProvider`
 (`lib/delivery/whatsapp.ts`) implements the same `DeliveryProvider`
 interface and is called directly and synchronously from the same
 `delivery-actions.ts`, no queue. The guest list and delivery status pages

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { nextAttemptNumber, recordDeliveryEvent, loadGuestForSend } from "@/lib/delivery/delivery-log";
-import { NextSmsProvider } from "@/lib/delivery/nextsms";
+import { HudumaSmsProvider } from "@/lib/delivery/hudumasms";
 import { WhatsAppProvider } from "@/lib/delivery/whatsapp";
 import type { DeliveryChannelName } from "@/lib/delivery/provider";
 import { getInviteSmsText } from "@/lib/i18n";
@@ -51,7 +51,7 @@ async function sendNow(guestId: string, eventId: string, channel: DeliveryChanne
           templateParams: [context.fullName, context.eventName, inviteUrl],
           language: context.language,
         })
-      : await new NextSmsProvider().send({
+      : await new HudumaSmsProvider().send({
           to: context.phoneE164,
           text: getInviteSmsText(context.language, context.fullName, context.eventName, inviteUrl),
         });
@@ -60,7 +60,7 @@ async function sendNow(guestId: string, eventId: string, channel: DeliveryChanne
     guestId,
     eventId,
     channel,
-    provider: channel === "whatsapp" ? "whatsapp" : "nextsms",
+    provider: channel === "whatsapp" ? "whatsapp" : "hudumasms",
     status: result.ok ? "sent" : "failed",
     attemptNumber,
     providerMessageId: result.ok ? result.providerMessageId : null,
