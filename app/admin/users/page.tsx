@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/ui/page-header";
 import { LinkButton } from "@/components/ui/button";
@@ -43,6 +44,7 @@ export default async function AdminUsersPage() {
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Role</th>
+                <th className="px-4 py-3 font-medium" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -54,6 +56,14 @@ export default async function AdminUsersPage() {
                   <td className="px-4 py-3 text-muted-strong">{profile.email}</td>
                   <td className="px-4 py-3">
                     <Badge variant={ROLE_VARIANT[profile.role] ?? "default"}>{profile.role}</Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/admin/users/${profile.id}/password`}
+                      className="text-sm font-medium text-brand-orange-light hover:underline"
+                    >
+                      Set password
+                    </Link>
                   </td>
                 </tr>
               ))}

@@ -128,11 +128,22 @@ granted their own scan access on an event they organise (the "no scanner
 hired" case) just has two assignment rows — `customer` and `scanner` — on
 the same event; it's not a different kind of account.
 
-**Creating accounts**: admin-only, via Users → Invite in `/admin`. This
-sends a real Supabase invite email (`supabase.auth.admin.inviteUserByEmail`)
-— accepting it (clicking the link, then setting a password at
-`/auth/set-password`) *is* the email-verification step, so there's nothing
-else to configure for that.
+**Creating accounts**: admin-only, via Users → Invite in `/admin`. Two
+ways, both on the same form:
+
+- Leave the password field blank and it sends a real Supabase invite
+  email (`supabase.auth.admin.inviteUserByEmail`) — accepting it
+  (clicking the link, then setting a password at `/auth/set-password`)
+  *is* the email-verification step, so there's nothing else to configure
+  for that.
+- Type a password and it creates the account immediately
+  (`supabase.auth.admin.createUser` with `email_confirm: true`), no
+  email involved at all. Meant for door staff being onboarded on the
+  spot — the admin tells them the password directly. Any admin can
+  also reset an existing account's password anytime from Users → Set
+  password on that row, same underlying admin API
+  (`auth.admin.updateUserById`), e.g. if someone forgets theirs — there's
+  no self-service "forgot password" flow.
 
 **Bootstrapping your first admin** — nothing in the UI can do this, since
 inviting a user itself requires an existing admin session:
